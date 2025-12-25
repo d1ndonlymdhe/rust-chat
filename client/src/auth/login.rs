@@ -7,7 +7,7 @@ use std::{
 use lazy_static::lazy_static;
 use ui::{
     components::{
-        common::{Component, Length, def_key_handler},
+        common::{Alignment, Component, Length, def_key_handler},
         layout::Layout,
         text_input::TextInput,
         text_layout::TextLayout,
@@ -80,25 +80,15 @@ pub fn auth_screen() -> Component {
         AuthScreen::Login(_, _) => login_component(),
         AuthScreen::Signup(_, _) => signup_component(),
     };
-    return Layout::get_col_builder()
+    return Layout::get_row_builder()
         .dim((Length::FILL, Length::FILL))
+        .main_align(Alignment::Center)
         .children(vec![
-            active_screen,
-            TextLayout::get_builder()
-                .content("SWITCH")
-                .dim((Length::FILL,Length::FILL))
-                .bg_color(Color::WHEAT)
-                .dbg_name("SWITCH")
-                .flex(0.5)
-                .on_click(Box::new(|_| {
-                    let mut state = AUTH_STATE.lock().unwrap();
-                    println!("SWITCH LOCK OBTAINED");
-                    state.toggle_active_screen();
-                    false
-                }))
+            Layout::get_col_builder()
+                .dim((Length::FillPer(60), Length::FILL))
+                .children(vec![active_screen])
                 .build(),
         ])
-        .bg_color(Color::LIME)
         .build();
 }
 
@@ -137,15 +127,38 @@ fn login_component() -> Component {
         .dim((Length::FILL, Length::FILL))
         .bg_color(Color::RED)
         .flex(9.5)
+        .cross_align(Alignment::Center)
+        .padding((10, 10, 10, 10))
+        .gap(30)
         .children(vec![
             TextLayout::get_builder()
                 .content("Login")
                 .font_size(40)
                 .build(),
-            TextLayout::get_builder().content("Email").build(),
-            email_box,
-            TextLayout::get_builder().content("Password").build(),
-            pass_box,
+            Layout::get_col_builder()
+                .gap(10)
+                .cross_align(Alignment::Center)
+                .children(vec![
+                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Email: ").build(),
+                    email_box,
+                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Password: ").build(),
+                    pass_box,
+                    TextLayout::get_builder().padding((5,5,5,5)).content("Continue").bg_color(Color::BEIGE).build(),
+                    TextLayout::get_builder()
+                        .padding((5,5,5,5))
+                        .bg_color(Color::BEIGE)
+                        .dim((Length::FIT,Length::FIT))
+                        .wrap(false)
+                        .content("Signup Instead")
+                        .dbg_name("SwitchSignup")
+                        .on_click(Box::new(|_| {
+                            let mut state = AUTH_STATE.lock().unwrap();
+                            state.toggle_active_screen();
+                            false
+                        }))
+                        .build(),
+                ])
+                .build(),
         ])
         .build();
 }
@@ -181,16 +194,38 @@ fn signup_component() -> Component {
         .dim((Length::FILL, Length::FILL))
         .bg_color(Color::RED)
         .flex(9.5)
-        .gap(10)
+        .cross_align(Alignment::Center)
+        .padding((10, 10, 10, 10))
+        .gap(30)
         .children(vec![
             TextLayout::get_builder()
                 .content("Signup")
                 .font_size(40)
                 .build(),
-            TextLayout::get_builder().content("Email").build(),
-            email_box,
-            TextLayout::get_builder().content("Password").build(),
-            pass_box,
+            Layout::get_col_builder()
+                .gap(10)
+                .cross_align(Alignment::Center)
+                .children(vec![
+                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Email: ").build(),
+                    email_box,
+                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Password: ").build(),
+                    pass_box,
+                    TextLayout::get_builder().padding((5,5,5,5)).content("Continue").bg_color(Color::BEIGE).build(),
+                    TextLayout::get_builder()
+                        .padding((5,5,5,5))
+                        .bg_color(Color::BEIGE)
+                        .dim((Length::FIT,Length::FIT))
+                        .wrap(false)
+                        .content("Login Instead")
+                        .dbg_name("SwitchLogin")
+                        .on_click(Box::new(|_| {
+                            let mut state = AUTH_STATE.lock().unwrap();
+                            state.toggle_active_screen();
+                            false
+                        }))
+                        .build(),
+                ])
+                .build(),
         ])
         .build();
 }
@@ -198,7 +233,10 @@ fn signup_component() -> Component {
 fn text_input(value: String, set_val: State<dyn FnMut(&str) -> ()>) -> Component {
     return TextInput::get_builder()
         .content(&value.clone())
-        .dim((Length::FILL, Length::FIT))
+        .main_align(Alignment::Center)
+        .dim((Length::FILL, Length::FitPer(180)))
+        .font_size(26)
+        .padding((5,0,5,0))
         .on_key(Box::new(move |ev| {
             let (_, new_email) = def_key_handler(ev, &value);
             set_val.clone().borrow_mut()(&new_email);
