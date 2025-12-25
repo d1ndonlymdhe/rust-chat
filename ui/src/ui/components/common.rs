@@ -300,21 +300,22 @@ pub fn keyboard_key_to_char(key: KeyboardKey) -> Option<char> {
     }
 }
 
-pub fn def_key_handler(key_event: KeyEvent, text: &mut String) -> bool {
+pub fn def_key_handler(key_event: KeyEvent, text: &str) -> (bool, String) {
+    let mut text = text.to_string();
     if let Some(key) = key_event.key {
         if key == KeyboardKey::KEY_BACKSPACE {
             text.pop();
-            return true;
+            return (true,text);
         }
         if let Some(mut c) = keyboard_key_to_char(key) {
             if key_event.shift_down {
                 c = shift_character(c);
             }
             text.push(c);
-            return true;
+            return (true,text);
         }
     }
-    false
+    (false,text)
 }
 
 pub fn shift_character(c: char) -> char {
