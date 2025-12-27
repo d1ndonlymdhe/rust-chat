@@ -20,7 +20,7 @@ pub struct IdOnly {
 #[db_func]
 async fn get_user_as_email(username:&str) -> Result<User,sqlx::Error> {
     let res = sqlx::query_as!(User,r#"SELECT id,username,refresh_token,hash_password,created_at as "created_at!:String",updated_at as "updated_at!:String" from users where username = $1"#,username).fetch_one(pool).await;
-    return  res;
+    return res;
 }
 
 #[db_func]

@@ -2,9 +2,11 @@ use std::{
     cell::RefCell,
     rc::Rc,
     sync::{Arc, Mutex},
+    thread,
 };
 
 use lazy_static::lazy_static;
+use shared::SignupRequest;
 use ui::{
     components::{
         common::{Alignment, Component, Length, def_key_handler},
@@ -18,12 +20,39 @@ use ui::{
 struct AuthState {
     token: Option<String>,
     screen: AuthScreen,
+    loading: bool,
 }
+
+fn execute_signup() {
+    let (email, password) = {
+        let mut state = AUTH_STATE.lock().unwrap();
+        state.loading = true;
+        state.get_signup_params()
+    };
+    thread::spawn(move || {
+        let client = reqwest::blocking::Client::new();
+        let req_body = serde_json::to_string(&(SignupRequest { email, password })).unwrap();
+        let res = client
+            .post("http://localhost:8000/auth/signup")
+            .body(req_body)
+            .send();
+        match res {
+            Ok(v) => {
+                println!("{} {}", v.status(), v.text().unwrap())
+            }
+            Err(e) => {
+                print!("Net Err: {:#?}", e)
+            }
+        }
+    });
+}
+
 impl AuthState {
     fn new() -> Self {
         Self {
             token: None,
             screen: AuthScreen::Login("".to_string(), "".to_string()),
+            loading: false,
         }
     }
     fn get_login_params(&self) -> (String, String) {
@@ -139,15 +168,29 @@ fn login_component() -> Component {
                 .gap(10)
                 .cross_align(Alignment::Center)
                 .children(vec![
-                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Email: ").build(),
-                    email_box,
-                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Password: ").build(),
-                    pass_box,
-                    TextLayout::get_builder().padding((5,5,5,5)).content("Continue").bg_color(Color::BEIGE).build(),
                     TextLayout::get_builder()
-                        .padding((5,5,5,5))
+                        .dim((Length::FILL, Length::FIT))
+                        .content("Email: ")
+                        .build(),
+                    email_box,
+                    TextLayout::get_builder()
+                        .dim((Length::FILL, Length::FIT))
+                        .content("Password: ")
+                        .build(),
+                    pass_box,
+                    TextLayout::get_builder()
+                        .padding((5, 5, 5, 5))
+                        .content("Continue")
+                        .on_click(Box::new(|_| {
+                            // execute_signup();
+                            false
+                        }))
                         .bg_color(Color::BEIGE)
-                        .dim((Length::FIT,Length::FIT))
+                        .build(),
+                    TextLayout::get_builder()
+                        .padding((5, 5, 5, 5))
+                        .bg_color(Color::BEIGE)
+                        .dim((Length::FIT, Length::FIT))
                         .wrap(false)
                         .content("Signup Instead")
                         .dbg_name("SwitchSignup")
@@ -206,15 +249,29 @@ fn signup_component() -> Component {
                 .gap(10)
                 .cross_align(Alignment::Center)
                 .children(vec![
-                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Email: ").build(),
-                    email_box,
-                    TextLayout::get_builder().dim((Length::FILL,Length::FIT)).content("Password: ").build(),
-                    pass_box,
-                    TextLayout::get_builder().padding((5,5,5,5)).content("Continue").bg_color(Color::BEIGE).build(),
                     TextLayout::get_builder()
-                        .padding((5,5,5,5))
+                        .dim((Length::FILL, Length::FIT))
+                        .content("Email: ")
+                        .build(),
+                    email_box,
+                    TextLayout::get_builder()
+                        .dim((Length::FILL, Length::FIT))
+                        .content("Password: ")
+                        .build(),
+                    pass_box,
+                    TextLayout::get_builder()
+                        .padding((5, 5, 5, 5))
+                        .content("Continue")
+                        .on_click(Box::new(|_|{
+                            execute_signup();
+                            false
+                        }))
                         .bg_color(Color::BEIGE)
-                        .dim((Length::FIT,Length::FIT))
+                        .build(),
+                    TextLayout::get_builder()
+                        .padding((5, 5, 5, 5))
+                        .bg_color(Color::BEIGE)
+                        .dim((Length::FIT, Length::FIT))
                         .wrap(false)
                         .content("Login Instead")
                         .dbg_name("SwitchLogin")
@@ -236,7 +293,7 @@ fn text_input(value: String, set_val: State<dyn FnMut(&str) -> ()>) -> Component
         .main_align(Alignment::Center)
         .dim((Length::FILL, Length::FitPer(180)))
         .font_size(26)
-        .padding((5,0,5,0))
+        .padding((5, 0, 5, 0))
         .on_key(Box::new(move |ev| {
             let (_, new_email) = def_key_handler(ev, &value);
             set_val.clone().borrow_mut()(&new_email);

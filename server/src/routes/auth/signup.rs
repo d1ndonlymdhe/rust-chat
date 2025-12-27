@@ -1,15 +1,10 @@
 use rocket::{State, serde::{json::Json}};
-use serde::{Deserialize};
 use sqlx::SqlitePool;
-use shared::Response;
+use shared::{Response, SignupRequest};
 use crate::db::{self, auth::signup::IdOnly};
 
-#[derive(Deserialize)]
-pub struct SignupRequest {
-    pub email: String,
-    pub password: String
-}
-#[post("/",data="<payload>")]
+
+#[post("/signup",data="<payload>")]
 pub async fn signup(pool: &State<SqlitePool>,payload: Json<SignupRequest>) -> Json<Response<Option<IdOnly>>>{
     let SignupRequest{email,password} = payload.0;
     let new_user = db::auth::signup::signup(pool, &email, &password).await;

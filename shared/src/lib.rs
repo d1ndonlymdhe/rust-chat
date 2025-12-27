@@ -15,3 +15,9 @@ impl<T> Response<T> where T:Serialize {
         };
     }
 }
+
+#[derive(Deserialize,Serialize)]
+pub struct SignupRequest {
+    pub email: String,
+    pub password: String
+}
