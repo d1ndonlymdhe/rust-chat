@@ -17,6 +17,8 @@ use ui::{
     raylib::color::Color,
 };
 
+use crate::UI_REBUILD_SIGNAL_SEND;
+
 struct AuthState {
     token: Option<String>,
     screen: AuthScreen,
@@ -36,12 +38,17 @@ fn execute_signup() {
             .post("http://localhost:8000/auth/signup")
             .body(req_body)
             .send();
+        let mut state = AUTH_STATE.lock().unwrap();
         match res {
             Ok(v) => {
-                println!("{} {}", v.status(), v.text().unwrap())
+                println!("{} {}", v.status(), v.text().unwrap());
+                state.loading = false;
+                UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
             }
             Err(e) => {
-                print!("Net Err: {:#?}", e)
+                print!("Net Err: {:#?}", e);
+                state.loading = false;
+                UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
             }
         }
     });
@@ -101,9 +108,9 @@ lazy_static! {
 }
 
 pub fn auth_screen() -> Component {
-    let active_screen = {
+    let (active_screen,loading) = {
         let state = AUTH_STATE.lock().unwrap();
-        state.screen.clone()
+        (state.screen.clone(),state.loading)
     };
     let active_screen = match active_screen {
         AuthScreen::Login(_, _) => login_component(),
@@ -113,6 +120,15 @@ pub fn auth_screen() -> Component {
         .dim((Length::FILL, Length::FILL))
         .main_align(Alignment::Center)
         .children(vec![
+            TextLayout::get_builder()
+            .content({
+                if loading {
+                    "LOADING"
+                } else{
+                    "NOT LOADING"
+                }
+            })
+            .build(),
             Layout::get_col_builder()
                 .dim((Length::FillPer(60), Length::FILL))
                 .children(vec![active_screen])

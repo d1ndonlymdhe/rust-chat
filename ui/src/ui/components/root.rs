@@ -4,11 +4,11 @@ use raylib::{
     ffi::{KeyboardKey, MouseButton},
     prelude::{RaylibDraw, RaylibDrawHandle},
 };
-use std::{cell::RefCell, collections::HashMap, rc::Rc, vec};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::mpsc, vec};
 
 pub struct UIRoot {}
 impl UIRoot {
-    pub fn start(builder: Box<dyn Fn() -> Component>, dim: (i32, i32), title: &str) {
+    pub fn start(builder: Box<dyn Fn() -> Component>, dim: (i32, i32), title: &str, rebuild_signal: mpsc::Receiver<()>) {
         let (mut rl, thread) = raylib::init()
             .height(dim.1)
             .width(dim.0)
@@ -33,6 +33,8 @@ impl UIRoot {
             let ctrl_down = rl.is_key_down(KeyboardKey::KEY_LEFT_CONTROL)
                 || rl.is_key_down(KeyboardKey::KEY_RIGHT_CONTROL);
 
+            let extern_signal = rebuild_signal.try_recv();
+            let extern_signal = extern_signal.is_ok();
             let mouse_event = MouseEvent {
                 pos: (mouse_pos.x as i32, mouse_pos.y as i32),
                 left_button_down: left_mouse_pressed,
@@ -71,7 +73,9 @@ impl UIRoot {
                     &mut scroll_map,
                     scroll_event,
                 );
-                if a || b || c {
+
+
+                if a || b || c || extern_signal {
                     should_rebuild_ui = true;
                 }
             }
