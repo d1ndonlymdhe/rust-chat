@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id,username,refresh_token,hash_password,created_at as \"created_at!:String\",updated_at as \"updated_at!:String\" from users where username = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "username",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "refresh_token",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "hash_password",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!:String",
+        "ordinal": 4,
+        "type_info": "Datetime"
+      },
+      {
+        "name": "updated_at!:String",
+        "ordinal": 5,
+        "type_info": "Datetime"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2b2da32a792a8ef97d42c68d813fb3fce95eabec3ea445446e8afc76652522ce"
+}

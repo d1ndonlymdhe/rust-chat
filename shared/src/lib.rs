@@ -1,14 +1,17 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use serde::{Serialize,Deserialize};
+#[derive(Serialize,Deserialize)]
+pub struct Response<T> where T: Serialize{
+    success: bool,
+    message: String,
+    data: T,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl<T> Response<T> where T:Serialize {
+    pub fn new(success: bool, message: &str, data: T) -> Self {
+        return Self {
+            success,
+            message: message.into(),
+            data,
+        };
     }
 }
