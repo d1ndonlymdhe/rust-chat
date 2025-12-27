@@ -1,3 +1,4 @@
+use std::sync::{OnceLock, mpsc::{self, Receiver, Sender}};
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -10,8 +11,17 @@ use ui::{
 use crate::auth::auth_screen;
 mod auth;
 extern crate ui;
+
+pub static UI_REBUILD_SIGNAL_SEND: OnceLock<Sender<()>> = OnceLock::new();
+
+fn init_channel() -> Receiver<()> {
+    let (tx, rx) = mpsc::channel();
+    UI_REBUILD_SIGNAL_SEND.set(tx).ok().unwrap();
+    rx
+}
 fn main() {
-    UIRoot::start(Box::new(|| ui_builder()), (1920, 1000), "Hello from lib");
+    let UI_REBUILD_SIGNAL_RECV = init_channel();
+    UIRoot::start(Box::new(|| ui_builder()), (1920, 1000), "Hello from lib",UI_REBUILD_SIGNAL_RECV);
 }
 
 fn ui_builder() -> Component {
