@@ -1,20 +1,8 @@
 use macros::db_err;
 use macros::db_func;
-use serde::Serialize;
-pub struct User {
-    id: i64,
-    username: String,
-    hash_password: String,
-    refresh_token: Option<String>,
-    created_at: String,
-    updated_at: String
-}
 
-#[derive(Serialize)]
-pub struct IdOnly {
-    id: i64
-}
-
+use shared::db::signup::IdOnly;
+use shared::db::signup::User;
 
 
 #[db_func]

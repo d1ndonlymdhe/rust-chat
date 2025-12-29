@@ -5,3 +5,8 @@ edition = "2024"
 
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
+rocket = {version = "0.5.1", optional = true, features = ["json"]}
+
+[features]
+# default = ["server"]
+server = ["dep:rocket"]

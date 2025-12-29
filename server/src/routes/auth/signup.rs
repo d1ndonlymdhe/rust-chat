@@ -1,20 +1,30 @@
-use rocket::{State, serde::{json::Json}};
+use rocket::{State, serde::json::Json};
+use shared::{
+    Response, routes::auth::signup::{SignupRequest, SignupResponse}
+};
 use sqlx::SqlitePool;
-use shared::{Response, SignupRequest};
-use crate::db::{self, auth::signup::IdOnly};
 
+use crate::db;
 
-#[post("/signup",data="<payload>")]
-pub async fn signup(pool: &State<SqlitePool>,payload: Json<SignupRequest>) -> Json<Response<Option<IdOnly>>>{
-    let SignupRequest{email,password} = payload.0;
+#[post("/signup", data = "<payload>")]
+pub async fn signup(
+    pool: &State<SqlitePool>,
+    payload: Json<SignupRequest>,
+) -> Response<SignupResponse> {
+    let SignupRequest { email, password } = payload.0;
     let new_user = db::auth::signup::signup(pool, &email, &password).await;
     match new_user {
-        Ok(id) => {
-            Json(Response::new(true, "User created successfully", Some(id)))
-        },
+        Ok(id) => Response::success("User created successfully",id),
         Err(e) => {
-            let e_string:String = e.into();
-            Json(Response::new(false, &e_string, None))
-        },
+            match e {
+                db::auth::signup::SignupError::UserAlreadyExists => {
+                    Response::bad_request("User already exists",None)
+                },
+                db::auth::signup::SignupError::Sqlx(error) => {
+                    let e_string: String = error.to_string();
+                    Response::internal_error(&e_string, None)
+                }
+            }
+        }
     }
 }
