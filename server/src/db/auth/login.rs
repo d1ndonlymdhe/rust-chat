@@ -1,7 +1,7 @@
 use macros::{db_err, db_func};
 use shared::{db::signup::User};
 use sqlx::{query_as};
-use crate::db::auth::jwt::AnyErr;
+use shared::AnyErr;
 
 #[db_err]
 #[derive(Debug)]

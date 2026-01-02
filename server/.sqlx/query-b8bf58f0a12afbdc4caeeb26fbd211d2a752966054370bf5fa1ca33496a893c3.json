@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT tfr.token_family_id as id FROM token_family_rel tfr JOIN token t on t.id = tfr.token_id WHERE t.token = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b8bf58f0a12afbdc4caeeb26fbd211d2a752966054370bf5fa1ca33496a893c3"
+}

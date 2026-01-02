@@ -3,7 +3,7 @@ use macros::db_func;
 
 use shared::db::signup::IdOnly;
 use shared::db::signup::User;
-use crate::db::auth::jwt::AnyErr;
+use shared::AnyErr;
 
 #[db_func]
 async fn get_user_from_username(username:&str) -> Result<User,sqlx::Error> {

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id,username,refresh_token,hash_password,created_at as \"created_at!:String\",updated_at as \"updated_at!:String\" from users where username = $1",
+  "query": "SELECT id,username,hash_password,created_at as \"created_at!:String\",updated_at as \"updated_at!:String\" from users where username = $1",
   "describe": {
     "columns": [
       {
@@ -14,23 +14,18 @@
         "type_info": "Text"
       },
       {
-        "name": "refresh_token",
+        "name": "hash_password",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "hash_password",
-        "ordinal": 3,
-        "type_info": "Text"
-      },
-      {
         "name": "created_at!:String",
-        "ordinal": 4,
+        "ordinal": 3,
         "type_info": "Datetime"
       },
       {
         "name": "updated_at!:String",
-        "ordinal": 5,
+        "ordinal": 4,
         "type_info": "Datetime"
       }
     ],
@@ -40,11 +35,10 @@
     "nullable": [
       false,
       false,
-      true,
       false,
       false,
       false
     ]
   },
-  "hash": "2b2da32a792a8ef97d42c68d813fb3fce95eabec3ea445446e8afc76652522ce"
+  "hash": "891bcdff01b90aa3ebf80e715d439825f9c0b6201a365eb3c5bc8d485a92f840"
 }

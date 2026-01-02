@@ -2,3 +2,4 @@
 db.sqlite-shm
 db.sqlite-wal
 db.sqlite
+.env

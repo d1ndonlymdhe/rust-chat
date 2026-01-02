@@ -2,6 +2,15 @@ pub mod db;
 pub mod routes;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
+#[derive(Debug,Clone, Copy)]
+pub struct AnyErr(pub ());
+impl From<()> for AnyErr {
+    fn from(_value: ()) -> Self {
+        return AnyErr(());
+    }
+}
+
+
 #[cfg(feature = "server")]
 type WebBox<T> = rocket::serde::json::Json<T>;
 

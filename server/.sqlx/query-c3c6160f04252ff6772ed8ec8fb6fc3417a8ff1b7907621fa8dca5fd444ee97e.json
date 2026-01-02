@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE token_family_rel SET status = 'expired' WHERE token_family_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "c3c6160f04252ff6772ed8ec8fb6fc3417a8ff1b7907621fa8dca5fd444ee97e"
+}

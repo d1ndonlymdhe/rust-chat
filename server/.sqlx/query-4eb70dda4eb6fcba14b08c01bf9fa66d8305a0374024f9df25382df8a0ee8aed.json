@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO token_family_rel (token_family_id,status,token_id) VALUES ($1,$2,$3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "4eb70dda4eb6fcba14b08c01bf9fa66d8305a0374024f9df25382df8a0ee8aed"
+}

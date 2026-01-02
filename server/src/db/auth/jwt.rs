@@ -3,13 +3,7 @@ use macros::{db_err, db_func,any_cast};
 use serde::{Deserialize, Serialize};
 use shared::db::signup::IdOnly;
 use sqlx::{query, query_as};
-
-pub struct AnyErr(pub ());
-impl From<()> for AnyErr {
-    fn from(_value: ()) -> Self {
-        return AnyErr(());
-    }
-}
+use shared::AnyErr;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
@@ -104,7 +98,7 @@ pub fn get_access_token(user_id: i64) -> String {
         .checked_add_signed(chrono::Duration::minutes(15))
         .unwrap();
     let claims = Claims::new_v1(user_id, expiration);
-    let refresh_token_key = std::env::var("JWT_REFRESH_KEY").unwrap();
+    let refresh_token_key = std::env::var("JWT_ACCESS_KEY").unwrap();
     let new_token = jsonwebtoken::encode(
         &jsonwebtoken::Header::default(),
         &claims,
