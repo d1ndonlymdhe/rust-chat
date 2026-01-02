@@ -8,14 +8,19 @@ type WebBox<T> = rocket::serde::json::Json<T>;
 #[cfg(not(feature = "server"))]
 type WebBox<T> = T;
 
-
 #[cfg(feature = "server")]
-fn Json<T>(d:T) -> WebBox<T> where T: Serialize + DeserializeOwned {
+fn Json<T>(d: T) -> WebBox<T>
+where
+    T: Serialize + DeserializeOwned,
+{
     return rocket::serde::json::Json(d);
 }
 
 #[cfg(not(feature = "server"))]
-fn Json<T>(d:T) -> WebBox<T> where T: Serialize + DeserializeOwned {
+fn Json<T>(d: T) -> WebBox<T>
+where
+    T: Serialize + DeserializeOwned,
+{
     return d;
 }
 
@@ -28,7 +33,9 @@ pub enum Response<T> {
     #[cfg_attr(feature = "server", response(status = 400))]
     BadRequest(WebBox<ResponseStruct<Option<T>>>),
     #[cfg_attr(feature = "server", response(status = 500))]
-    InternalError(WebBox<ResponseStruct<Option<T>>>)
+    InternalError(WebBox<ResponseStruct<Option<T>>>),
+    #[cfg_attr(feature = "server", response(status = 401))]
+    Unauthorized(WebBox<ResponseStruct<Option<T>>>),
 }
 
 impl<T> Response<T>
@@ -44,11 +51,13 @@ where
     pub fn bad_request(message: &str, data: Option<T>) -> Self {
         Response::BadRequest(Json(ResponseStruct::new(false, message, data)))
     }
-    pub fn internal_error(message: &str, data:Option<T>) -> Self {
-        Response::InternalError(Json(ResponseStruct::new(  false, message, data) ))
+    pub fn internal_error(message: &str, data: Option<T>) -> Self {
+        Response::InternalError(Json(ResponseStruct::new(false, message, data)))
+    }
+    pub fn unauthorized(message: &str, data: Option<T>) -> Self {
+        Response::Unauthorized(Json(ResponseStruct::new(false, message, data)))
     }
 }
-
 
 #[derive(Serialize, Deserialize)]
 pub struct ResponseStruct<T> {

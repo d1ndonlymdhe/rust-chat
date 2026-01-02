@@ -12,3 +12,6 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-native-tls", "sqli
 macros = { path = "../macros" }
 shared = { path = "../shared", features=["server"] }
 bcrypt = "0.17.1"
+jsonwebtoken = {version  = "10.2.0", features = ["aws_lc_rs"]}
+chrono = { version = "0.4.42", features = ["serde"] }
+uuid = {version = "1.19.0", features = ["v4"]}

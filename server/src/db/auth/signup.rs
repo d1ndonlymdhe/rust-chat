@@ -3,11 +3,11 @@ use macros::db_func;
 
 use shared::db::signup::IdOnly;
 use shared::db::signup::User;
-
+use crate::db::auth::jwt::AnyErr;
 
 #[db_func]
-async fn get_user_as_email(username:&str) -> Result<User,sqlx::Error> {
-    let res = sqlx::query_as!(User,r#"SELECT id,username,refresh_token,hash_password,created_at as "created_at!:String",updated_at as "updated_at!:String" from users where username = $1"#,username).fetch_one(pool).await;
+async fn get_user_from_username(username:&str) -> Result<User,sqlx::Error> {
+    let res = sqlx::query_as!(User,r#"SELECT id,username,hash_password,created_at as "created_at!:String",updated_at as "updated_at!:String" from users where username = $1"#,username).fetch_one(pool).await;
     return res;
 }
 
@@ -34,7 +34,7 @@ impl Into<String> for SignupError {
 
 #[db_func]
 pub async fn signup(username:&str, password:&str)->Result<IdOnly,SignupError>{
-    let already_exists = get_user_as_email(pool, username).await.is_ok();
+    let already_exists = get_user_from_username(pool, username).await.is_ok();
     if already_exists {
         Err(SignupError::UserAlreadyExists)
     }else {

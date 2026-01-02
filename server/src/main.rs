@@ -6,10 +6,11 @@ use std::{env, str::FromStr};
 use dotenvy::dotenv;
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
 
-use crate::routes::auth::signup::signup;
+use crate::routes::auth::{login::login, signup::signup};
 
 mod routes;
 mod db;
+
 #[get("/")]
 fn index() -> &'static str {
     return "Hello World";
@@ -32,6 +33,6 @@ async fn rocket() -> _ {
     rocket::build()
     .manage(pool)
     .mount("/", routes![index])
-    .mount("/auth", routes![signup])
+    .mount("/auth", routes![signup,login])
 
 }
