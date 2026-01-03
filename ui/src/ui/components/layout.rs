@@ -639,4 +639,8 @@ impl Base for Layout {
     fn get_position(&self) -> Position {
         self.position
     }
+
+    fn set_children(&mut self, new_children :Vec<Component>) {
+        self.children = new_children
+    }
 }

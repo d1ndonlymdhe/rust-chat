@@ -138,7 +138,9 @@ pub trait Base {
     fn get_children(&self) -> Vec<Rc<RefCell<dyn Base>>> {
         Vec::new()
     }
-
+    fn set_children(&mut self, _new_children :Vec<Component>){
+        // only override for Layout
+    }
     fn get_id(&self) -> String;
     fn get_by_id(&self, id: &str) -> Option<Rc<RefCell<dyn Base>>>;
     fn is_focusable(&self) -> bool {

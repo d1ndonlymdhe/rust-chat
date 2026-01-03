@@ -6,7 +6,7 @@ use std::{
 };
 
 use lazy_static::lazy_static;
-use shared::{routes::auth::signup::{SignupRequest,SignupResponse}};
+use shared::routes::auth::signup::{SignupRequest, SignupResponse};
 use ui::{
     components::{
         common::{Alignment, Component, Length, def_key_handler},
@@ -19,11 +19,10 @@ use ui::{
 
 use crate::UI_REBUILD_SIGNAL_SEND;
 
-struct AuthState {
-    token: Option<String>,
-    screen: AuthScreen,
-    error: Option<String>,
-    loading: bool,
+pub struct AuthState {
+    pub screen: AuthScreen,
+    pub error: Option<String>,
+    pub loading: bool,
 }
 
 fn execute_signup() {
@@ -75,7 +74,7 @@ fn execute_login() {
         match res {
             Ok(v) => {
                 // println!("{} {}", v.status(), v.text().unwrap());
-                let o:SignupResponse = serde_json::from_str(&v.text().unwrap()).unwrap();
+                let o: SignupResponse = serde_json::from_str(&v.text().unwrap()).unwrap();
                 state.loading = false;
                 UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
             }
@@ -89,13 +88,9 @@ fn execute_login() {
     });
 }
 
-
-
-
 impl AuthState {
     fn new() -> Self {
         Self {
-            token: None,
             screen: AuthScreen::Login("".to_string(), "".to_string()),
             loading: false,
             error: None,
@@ -133,17 +128,17 @@ impl AuthState {
     }
 }
 type State<T> = Rc<RefCell<T>>;
-fn as_state<T>(v: T) -> State<T> {
+pub fn as_state<T>(v: T) -> State<T> {
     return Rc::new(RefCell::new(v));
 }
 #[derive(Clone)]
-enum AuthScreen {
+pub enum AuthScreen {
     Login(String, String),
     Signup(String, String),
 }
 
 lazy_static! {
-    static ref AUTH_STATE: Arc<Mutex<AuthState>> = Arc::new(Mutex::new(AuthState::new()));
+    pub static ref AUTH_STATE: Arc<Mutex<AuthState>> = Arc::new(Mutex::new(AuthState::new()));
 }
 
 pub fn auth_screen() -> Component {
@@ -235,11 +230,7 @@ fn login_component(loading: bool, error: Option<String>) -> Component {
     ];
     if let Some(err) = error.clone() {
         let err_msg = format!("Error: {}", err);
-        form_children.push(
-            TextLayout::get_builder()
-                .content(&err_msg)
-                .build(),
-        );
+        form_children.push(TextLayout::get_builder().content(&err_msg).build());
     }
     if loading {
         form_children.push(
@@ -336,11 +327,7 @@ fn signup_component(loading: bool, error: Option<String>) -> Component {
     ];
     if let Some(err) = error.clone() {
         let err_msg = format!("Error: {}", err);
-        form_children.push(
-            TextLayout::get_builder()
-                .content(&err_msg)
-                .build(),
-        );
+        form_children.push(TextLayout::get_builder().content(&err_msg).build());
     }
     if loading {
         form_children.push(
@@ -370,12 +357,12 @@ fn signup_component(loading: bool, error: Option<String>) -> Component {
         .build();
 }
 
-enum TextInputType {
+pub enum TextInputType {
     Password,
     Text,
 }
 
-fn text_input(
+pub fn text_input(
     value: String,
     set_val: State<dyn FnMut(&str) -> ()>,
     input_type: TextInputType,
