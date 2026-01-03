@@ -6,7 +6,7 @@ use std::{env, str::FromStr};
 use dotenvy::dotenv;
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
 
-use crate::routes::auth::{login::login, signup::signup};
+use crate::routes::{auth::{login::login, refresh::refresh, signup::signup}, users::search::search_users};
 
 mod routes;
 mod db;
@@ -33,6 +33,7 @@ async fn rocket() -> _ {
     rocket::build()
     .manage(pool)
     .mount("/", routes![index])
-    .mount("/auth", routes![signup,login])
+    .mount("/auth", routes![signup,login,refresh])
+    .mount("/users",routes![search_users])
 
 }

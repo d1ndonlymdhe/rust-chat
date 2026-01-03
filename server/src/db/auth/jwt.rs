@@ -1,15 +1,43 @@
 use chrono::Utc;
-use macros::{db_err, db_func,any_cast};
+use macros::{any_cast, db_err, db_func};
+use rocket::{
+    Request, http::Status, outcome::Outcome, request::{self, FromRequest}
+};
 use serde::{Deserialize, Serialize};
+use shared::AnyErr;
 use shared::db::signup::IdOnly;
 use sqlx::{query, query_as};
-use shared::AnyErr;
+
+use crate::db::auth::jwt;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
     version: i64,
     user_id: i64,
     exp: chrono::DateTime<chrono::Utc>,
+}
+#[async_trait]
+impl<'r> FromRequest<'r> for Claims {
+    type Error = AnyErr;
+
+    async fn from_request(req: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let authorization = req.headers().get_one("Authorization");
+        if let Some(authorization) = authorization {
+            let token = authorization.split(" ").collect::<Vec<_>>();
+            if token.len() == 2 {
+                let claims = jwt::get_access_claims(token[1]);
+                match claims {
+                    Ok(c) => {
+                        return Outcome::Success(c);
+                    },
+                    Err(_) => {
+                        return Outcome::Error((Status::from_code(401).unwrap(),AnyErr(())));
+                    },
+                }
+            }
+        }
+        return Outcome::Error((Status::from_code(401).unwrap(),AnyErr(())));
+    }
 }
 
 impl Claims {
