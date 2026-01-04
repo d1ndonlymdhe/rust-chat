@@ -108,7 +108,7 @@ impl Base for RawText {
             ID::Manual(name) => name.clone(),
         }
     }
-    fn get_by_id(&self, _id: &str) -> Option<Rc<RefCell<dyn Base>>> {
+    fn get_by_id(&self, _id: &str) -> Option<Component> {
         None
     }
 

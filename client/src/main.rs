@@ -1,16 +1,11 @@
 use reqwest::Error;
-use serde::{Serialize, de::DeserializeOwned};
-use shared::routes::auth::refresh::RefreshRequest;
+use serde::Serialize;
 use std::{
-    cell::RefCell,
-    fmt::format,
-    ops::Deref,
     rc::Rc,
     sync::{
-        Arc, Mutex, Once, OnceLock,
+        Arc, Mutex, OnceLock,
         mpsc::{self, Receiver, Sender},
     },
-    thread,
 };
 use ui::{
     components::{
@@ -24,12 +19,46 @@ use ui::{
 
 use crate::auth::{
     auth_screen,
-    login::{AUTH_STATE, AuthState, TextInputType, as_state, text_input},
+    login::{TextInputType, as_state, text_input},
 };
 mod auth;
 extern crate ui;
 
 pub static BASE_URL: &'static str = "http://localhost:3000";
+pub static ROUTER: OnceLock<Mutex<Router>> = OnceLock::new();
+
+struct Router {
+    current_path: String,
+    path_stack: Vec<String>,
+    path_changed: bool,
+}
+
+impl Router {
+    fn new() -> Self {
+        Self {
+            current_path: "".into(),
+            path_stack: vec![],
+            path_changed: true,
+        }
+    }
+    fn push(&mut self, new_path: &str) {
+        self.path_stack.push(self.current_path.clone());
+        self.current_path = new_path.into();
+        self.path_changed = true;
+    }
+    fn can_go_back(&self) -> bool {
+        return !self.path_stack.is_empty();
+    }
+    fn back(&mut self) {
+        self.current_path = match self.path_stack.last() {
+            Some(p) => {
+                self.path_changed = true;
+                p.clone()
+            }
+            None => panic!("Can't go back use can_go_back to determine"),
+        };
+    }
+}
 
 pub struct HttpClient {
     access_token: Option<String>,
@@ -83,20 +112,6 @@ where
     client
 }
 
-// fn get_refresh_client(){
-//     let client = reqwest::blocking::Client::new().post(format!("{BASE_URL}/refresh"));
-//     let mut lock = HTTP_CLIENT.get().unwrap().lock().unwrap();
-//     let refresh_token = lock.refresh_token.clone();
-//     if let Some(refresh_token) = refresh_token {
-//         let client = client.body(serde_json::from_value(RefreshRequest{
-//             refresh_token:
-//         }))
-//     }else{
-//         let x = AUTH_STATE.lock().unwrap();
-
-//     }
-// }
-
 pub fn post<Body>(path: &str, body: Option<Body>) -> Result<reqwest::blocking::Response, Error>
 where
     Body: Serialize,
@@ -131,13 +146,13 @@ fn init_channel() -> Receiver<()> {
     rx
 }
 
-
-#[derive(Clone)]
 struct ContainerRoute {
     name: String,
     component: LazyComponent,
     outlet_id: String,
     sub_routes: Vec<Route>,
+    on_mount: Box<dyn Fn() -> ()>,
+    on_dismount: Box<dyn Fn() -> ()>,
 }
 
 impl ContainerRoute {
@@ -146,33 +161,45 @@ impl ContainerRoute {
         component: LazyComponent,
         outlet_id: &str,
         sub_routes: Vec<Route>,
+        on_mount: Box<dyn Fn() -> ()>,
+        on_dismount: Box<dyn Fn() -> ()>,
     ) -> Self {
         return Self {
             name: name.into(),
             component,
             outlet_id: outlet_id.into(),
             sub_routes,
+            on_mount: on_mount,
+            on_dismount: on_dismount,
         };
     }
 }
 
 type LazyComponent = Rc<dyn Fn() -> Component>;
-#[derive(Clone)]
+
 struct LeafRoute {
     name: String,
     component: LazyComponent,
+    on_mount: Box<dyn Fn() -> ()>,
+    on_dismount: Box<dyn Fn() -> ()>,
 }
 
 impl LeafRoute {
-    fn new(name: &str, component: LazyComponent) -> Self {
+    fn new(
+        name: &str,
+        on_mount: Box<dyn Fn() -> ()>,
+        on_dismount: Box<dyn Fn() -> ()>,
+        component: LazyComponent,
+    ) -> Self {
         return Self {
             name: name.into(),
             component,
+            on_mount,
+            on_dismount,
         };
     }
 }
 
-#[derive(Clone)]
 enum Route {
     ContainerRoute(ContainerRoute),
     LeafRoute(LeafRoute),
@@ -183,14 +210,26 @@ impl Route {
         name: &str,
         component: LazyComponent,
         outlet_id: &str,
+        on_mount: Box<dyn Fn() -> ()>,
+        on_dismount: Box<dyn Fn() -> ()>,
         sub_routes: Vec<Route>,
     ) -> Self {
         return Route::ContainerRoute(ContainerRoute::new(
-            name, component, outlet_id, sub_routes,
+            name,
+            component,
+            outlet_id,
+            sub_routes,
+            on_mount,
+            on_dismount,
         ));
     }
-    fn leaf(name: &str, component: LazyComponent) -> Self {
-        return Route::LeafRoute(LeafRoute::new(name, component));
+    fn leaf(
+        name: &str,
+        on_mount: Box<dyn Fn() -> ()>,
+        on_dismount: Box<dyn Fn() -> ()>,
+        component: LazyComponent,
+    ) -> Self {
+        return Route::LeafRoute(LeafRoute::new(name, on_mount, on_dismount, component));
     }
     fn name(&self) -> String {
         match self {
@@ -198,29 +237,50 @@ impl Route {
             Route::LeafRoute(leaf_route) => leaf_route.name.clone(),
         }
     }
+    fn on_mount(&self) {
+        match self {
+            Route::ContainerRoute(container_route) => (container_route.on_mount)(),
+            Route::LeafRoute(leaf_route) => (leaf_route.on_mount)(),
+        }
+    }
+    fn on_dismount(&self) {
+        match self {
+            Route::ContainerRoute(container_route) => (container_route.on_dismount)(),
+            Route::LeafRoute(leaf_route) => (leaf_route.on_dismount)(),
+        }
+    }
 }
 
-fn build_route(path: Vec<String>, route: Route) -> Component {
+fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Component {
     match route {
         Route::ContainerRoute(container_route) => {
             let mut path = path;
             let remaining_path = path.split_off(1);
             let next_path = &path[0];
-            println!("Next path = {next_path}");
-            let next_route = container_route
-                .sub_routes
-                .into_iter()
-                .find(|v| v.name() == *next_path);
+            let next_route = {
+                let mut ret_route = None;
+                for route in container_route.sub_routes.into_iter() {
+                    if &route.name() == next_path {
+                        // route.on_mount();
+                        if path_changed {
+                            route.on_mount();
+                        }
+                        ret_route = Some(route);
+                    } else {
+                        route.on_dismount();
+                    }
+                }
+                ret_route
+            };
             match next_route {
                 Some(r) => {
-                    println!("Filled by = {}", r.name());
                     let func = container_route.component.clone();
                     let component = func();
                     let for_borrow = component.clone();
                     let component_binding = for_borrow.borrow_mut();
                     let outlet = component_binding.get_by_id(&container_route.outlet_id);
                     if let Some(outlet) = outlet {
-                        let child_component = build_route(remaining_path, r);
+                        let child_component = build_route(remaining_path, r, path_changed);
                         outlet.borrow_mut().set_children(vec![child_component]);
                         return component;
                     } else {
@@ -236,28 +296,76 @@ fn build_route(path: Vec<String>, route: Route) -> Component {
     }
 }
 
-
+fn no_op() -> Box<dyn Fn() -> ()> {
+    return Box::new(|| {});
+}
 
 fn main() {
     let ui_rebuild_signal_recv = init_channel();
-
-    let r = Route::container(
-        "root",
-        Rc::new(|| root()),
-        "root_outlet",
-        vec![Route::container(
-            "auth",
-            Rc::new(|| auth_screen_2()),
-            "auth_outlet",
-            vec![
-                Route::leaf("login", Rc::new(|| login_page())),
-                Route::leaf("signup", Rc::new(|| signup_page())),
-            ],
-        )],
-    );
-
+    ROUTER.set(Mutex::new(Router::new())).ok().unwrap();
+    {
+        let mut router = ROUTER.get().unwrap().lock().unwrap();
+        router.push("auth/login");
+    }
     UIRoot::start(
-        Box::new(move || build_route(vec!["auth".into(), "login".into()], r.clone())),
+        Box::new(move || {
+            let r = Route::container(
+                "root",
+                Rc::new(|| root()),
+                "root_outlet",
+                no_op(),
+                no_op(),
+                vec![Route::container(
+                    "auth",
+                    Rc::new(|| auth_screen_2()),
+                    "auth_outlet",
+                    no_op(),
+                    no_op(),
+                    vec![
+                        Route::leaf(
+                            "login",
+                            Box::new(|| {
+                                let mut state = LOGIN_PAGE_STATE.lock().unwrap();
+                                state.replace(LoginPageState::new());
+                            }),
+                            Box::new(|| {
+                                let mut state = LOGIN_PAGE_STATE.lock().unwrap();
+                                state.take();
+                            }),
+                            Rc::new(|| login_page()),
+                        ),
+                        Route::leaf(
+                            "signup",
+                            Box::new(|| {
+                                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
+                                state.replace(LoginPageState::new());
+                            }),
+                            Box::new(|| {
+                                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
+                                state.take();
+                            }),
+                            Rc::new(|| signup_page()),
+                        ),
+                    ],
+                )],
+            );
+
+            let path = {
+                let router = ROUTER.get().unwrap().lock().unwrap();
+                let current_path = router.current_path.clone();
+                current_path
+                    .split("/")
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+            };
+
+            let router = &mut ROUTER.get().unwrap().lock().unwrap();
+            let path_changed = &mut router.path_changed;
+
+            let c = build_route(path, r, *path_changed);
+            *path_changed = false;
+            c
+        }),
         (1920, 1000),
         "Hello from lib",
         ui_rebuild_signal_recv,
@@ -297,38 +405,71 @@ fn auth_screen_2() -> Component {
         .build()
 }
 
+struct LoginPageState {
+    username: String,
+    password: String,
+    loading: bool,
+    error: Option<String>,
+}
+
+impl LoginPageState {
+    fn new() -> Self {
+        return Self {
+            username: "".into(),
+            password: "".into(),
+            loading: false,
+            error: None,
+        };
+    }
+    fn set_password(&mut self, new_password: String) {
+        self.password = new_password;
+    }
+    fn set_username(&mut self, new_username: String) {
+        self.username = new_username;
+    }
+    fn set_loading(&mut self, new_loading: bool) {
+        self.loading = new_loading;
+    }
+    fn set_error(&mut self, new_error: Option<String>) {
+        self.error = new_error;
+    }
+}
+
+static LOGIN_PAGE_STATE: Mutex<Option<LoginPageState>> = Mutex::new(None);
+
 fn login_page() -> Component {
     let email_box = {
-        // let login_params = {
-        //     let state = AUTH_STATE.lock().unwrap();
-        //     state.get_login_params()
-        // };
+        let username = {
+            let state = LOGIN_PAGE_STATE.lock().unwrap();
+            let state = state.as_ref().unwrap();
+            state.username.clone()
+        };
         text_input(
-            "".into(),
-            // login_params.0,
+            username,
             as_state(move |new_email| {
-                // let mut state = AUTH_STATE.lock().unwrap();
-                // state.set_login_state(new_email, &login_params.1);
+                let mut state = LOGIN_PAGE_STATE.lock().unwrap();
+                let state = state.as_mut().unwrap();
+                state.set_username(new_email.into())
             }),
             TextInputType::Text,
         )
     };
     let pass_box = {
-        // let login_params = {
-        //     let state = AUTH_STATE.lock().unwrap();
-        //     state.get_login_params()
-        // };
+        let password = {
+            let state = LOGIN_PAGE_STATE.lock().unwrap();
+            let state = state.as_ref().unwrap();
+            state.password.clone()
+        };
         text_input(
-            "".into(),
-            // login_params.0,
+            password,
             as_state(move |new_email| {
-                // let mut state = AUTH_STATE.lock().unwrap();
-                // state.set_login_state(new_email, &login_params.1);
+                let mut state = LOGIN_PAGE_STATE.lock().unwrap();
+                let state = state.as_mut().unwrap();
+                state.set_password(new_email.into())
             }),
             TextInputType::Text,
         )
     };
-
     let form_children = vec![
         TextLayout::get_builder()
             .dim((Length::FILL, Length::FIT))
@@ -357,25 +498,12 @@ fn login_page() -> Component {
             .content("Signup Instead")
             .dbg_name("SwitchSignup")
             .on_click(Box::new(move |_| {
-                // let mut state = AUTH_STATE.lock().unwrap();
-                // if !loading {
-                //     state.toggle_active_screen();
-                // }
+                let mut router = ROUTER.get().unwrap().lock().unwrap();
+                router.push("auth/signup");
                 false
             }))
             .build(),
     ];
-    // if let Some(err) = error.clone() {
-    //     let err_msg = format!("Error: {}", err);
-    //     form_children.push(TextLayout::get_builder().content(&err_msg).build());
-    // }
-    // if loading {
-    //     form_children.push(
-    //         TextLayout::get_builder()
-    //             .content(if loading { "LOADING" } else { "NOT LOADING" })
-    //             .build(),
-    //     )
-    // }
     return Layout::get_col_builder()
         .dim((Length::FILL, Length::FILL))
         .bg_color(Color::RED)
@@ -397,38 +525,42 @@ fn login_page() -> Component {
         .build();
 }
 
+type SignupPageState = LoginPageState;
+static SIGNUP_PAGE_STATE: Mutex<Option<SignupPageState>> = Mutex::new(None);
+
 fn signup_page() -> Component {
     let email_box = {
-        // let login_params = {
-        //     let state = AUTH_STATE.lock().unwrap();
-        //     state.get_login_params()
-        // };
+        let username = {
+            let state = SIGNUP_PAGE_STATE.lock().unwrap();
+            let state = state.as_ref().unwrap();
+            state.username.clone()
+        };
         text_input(
-            "".into(),
-            // login_params.0,
+            username,
             as_state(move |new_email| {
-                // let mut state = AUTH_STATE.lock().unwrap();
-                // state.set_login_state(new_email, &login_params.1);
+                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
+                let state = state.as_mut().unwrap();
+                state.set_username(new_email.into())
             }),
             TextInputType::Text,
         )
     };
     let pass_box = {
-        // let login_params = {
-        //     let state = AUTH_STATE.lock().unwrap();
-        //     state.get_login_params()
-        // };
+        let password = {
+            let state = SIGNUP_PAGE_STATE.lock().unwrap();
+            let state = state.as_ref().unwrap();
+            state.password.clone()
+        };
         text_input(
-            "".into(),
-            // login_params.0,
+            password,
             as_state(move |new_email| {
-                // let mut state = AUTH_STATE.lock().unwrap();
-                // state.set_login_state(new_email, &login_params.1);
+                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
+                let state = state.as_mut().unwrap();
+                state.set_password(new_email.into())
             }),
             TextInputType::Text,
         )
     };
-
     let form_children = vec![
         TextLayout::get_builder()
             .dim((Length::FILL, Length::FIT))
@@ -455,27 +587,14 @@ fn signup_page() -> Component {
             .dim((Length::FIT, Length::FIT))
             .wrap(false)
             .content("Login Instead")
-            .dbg_name("SwitchSignup")
+            .dbg_name("Switch Login")
             .on_click(Box::new(move |_| {
-                // let mut state = AUTH_STATE.lock().unwrap();
-                // if !loading {
-                //     state.toggle_active_screen();
-                // }
+                let mut router = ROUTER.get().unwrap().lock().unwrap();
+                router.push("auth/login");
                 false
             }))
             .build(),
     ];
-    // if let Some(err) = error.clone() {
-    //     let err_msg = format!("Error: {}", err);
-    //     form_children.push(TextLayout::get_builder().content(&err_msg).build());
-    // }
-    // if loading {
-    //     form_children.push(
-    //         TextLayout::get_builder()
-    //             .content(if loading { "LOADING" } else { "NOT LOADING" })
-    //             .build(),
-    //     )
-    // }
     return Layout::get_col_builder()
         .dim((Length::FILL, Length::FILL))
         .bg_color(Color::RED)

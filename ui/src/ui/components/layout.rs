@@ -12,7 +12,7 @@ use crate::components::common::{
 };
 
 pub struct Layout {
-    pub children: Vec<Rc<RefCell<dyn Base>>>,
+    pub children: Vec<Component>,
     pub dim: (Length, Length),
     pub draw_dim: (i32, i32),
     pub pos: (i32, i32),
@@ -29,7 +29,7 @@ pub struct Layout {
     pub flex: f32,
     pub on_click: Rc<RefCell<dyn FnMut(MouseEvent) -> bool>>,
     pub on_key: Rc<RefCell<dyn FnMut(KeyEvent) -> bool>>,
-    pub children_func: Option<Rc<RefCell<dyn Fn() -> Vec<Rc<RefCell<dyn Base>>>>>>,
+    pub children_func: Option<Rc<RefCell<dyn Fn() -> Vec<Component>>>>,
     pub overflow: (bool, bool),
     pub scroll_offset: i32,
     pub position: Position,
@@ -100,7 +100,7 @@ impl LayoutProps {
             },
         }
     }
-    pub fn children(mut self, children: Vec<Rc<RefCell<dyn Base>>>) -> Self {
+    pub fn children(mut self, children: Vec<Component>) -> Self {
         self.layout.children = children;
         self
     }
@@ -148,7 +148,7 @@ impl LayoutProps {
         self.layout.on_key = Rc::new(RefCell::new(f));
         self
     }
-    pub fn children_func(mut self, f: Rc<RefCell<dyn Fn() -> Vec<Rc<RefCell<dyn Base>>>>>) -> Self {
+    pub fn children_func(mut self, f: Rc<RefCell<dyn Fn() -> Vec<Component>>>) -> Self {
         self.layout.children_func = Some(f);
         self
     }
@@ -322,7 +322,7 @@ impl Base for Layout {
         }
         hit_children
     }
-    fn get_children(&self) -> Vec<Rc<RefCell<dyn Base>>> {
+    fn get_children(&self) -> Vec<Component> {
         self.children.clone()
     }
     fn set_raw_dim(&mut self, parent_dim: (i32, i32)) {
@@ -606,7 +606,7 @@ impl Base for Layout {
             ID::Manual(name) => name.clone(),
         }
     }
-    fn get_by_id(&self, id: &str) -> Option<Rc<RefCell<dyn Base>>> {
+    fn get_by_id(&self, id: &str) -> Option<Component> {
         for child in self.children.iter() {
             if child.borrow().get_id() == id {
                 return Some(child.clone());

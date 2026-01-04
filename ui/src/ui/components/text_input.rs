@@ -1,5 +1,6 @@
 use std::{cell::RefCell, collections::HashMap, ffi::CString, rc::Rc};
 
+use crate::components::common::Component;
 use crate::raylib::{color::Color, prelude::RaylibDrawHandle};
 
 use crate::components::{
@@ -213,7 +214,7 @@ impl Base for TextInput {
         return self.layout.draw(draw_handle);
     }
 
-    fn get_children(&self) -> Vec<Rc<RefCell<dyn Base>>> {
+    fn get_children(&self) -> Vec<Component> {
         self.layout.get_children()
     }
 
@@ -293,7 +294,7 @@ impl Base for TextInput {
                     .iter()
                     .map(|row| {
                         RawText::new(row, self.font_size, layout.padding, self.text_color)
-                            as Rc<RefCell<dyn Base>>
+                            as Component
                     })
                     .collect();
             }
@@ -388,7 +389,7 @@ impl Base for TextInput {
         self.layout.get_id()
     }
 
-    fn get_by_id(&self, id: &str) -> Option<Rc<RefCell<dyn Base>>> {
+    fn get_by_id(&self, id: &str) -> Option<Component> {
         self.layout.get_by_id(id)
     }
 

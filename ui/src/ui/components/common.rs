@@ -1,5 +1,5 @@
 use crate::raylib::prelude::*;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Length {

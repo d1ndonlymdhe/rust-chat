@@ -1,5 +1,6 @@
 use std::{cell::RefCell, ffi::CString, rc::Rc};
 
+use crate::components::common::Component;
 use crate::raylib::color::Color;
 
 use crate::components::{
@@ -269,7 +270,7 @@ impl Base for TextLayout {
                             self.font_size,
                             (0, 0, 0, 0), // layout.padding
                             self.text_color,
-                        ) as Rc<RefCell<dyn Base>>
+                        ) as Component
                     })
                     .collect();
             }

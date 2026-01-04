@@ -216,7 +216,7 @@ impl UIRoot {
         root_child.borrow().debug_dims(1);
         tabbed_print("</root>", 0);
     }
-    fn get_by_id(root_child: Component, id: &str) -> Option<Rc<RefCell<dyn Base>>> {
+    fn get_by_id(root_child: Component, id: &str) -> Option<Component> {
         let child = root_child.clone();
 
         let is_target = {
