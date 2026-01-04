@@ -18,14 +18,14 @@ use crate::{
     },
 };
 
-struct LoginPageState {
+struct SignupPageState {
     username: String,
     password: String,
     loading: bool,
     error: Option<String>,
 }
 
-impl LoginPageState {
+impl SignupPageState {
     fn new() -> Self {
         return Self {
             username: "".into(),
@@ -48,19 +48,19 @@ impl LoginPageState {
     }
 }
 
-static LOGIN_PAGE_STATE: Mutex<Option<LoginPageState>> = Mutex::new(None);
+static SIGNUP_PAGE_STATE: Mutex<Option<SignupPageState>> = Mutex::new(None);
 
 fn login_page() -> Component {
     let email_box = {
         let username = {
-            let state = LOGIN_PAGE_STATE.lock().unwrap();
+            let state = SIGNUP_PAGE_STATE.lock().unwrap();
             let state = state.as_ref().unwrap();
             state.username.clone()
         };
         text_input(
             username,
             as_state(move |new_email| {
-                let mut state = LOGIN_PAGE_STATE.lock().unwrap();
+                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
                 let state = state.as_mut().unwrap();
                 state.set_username(new_email.into())
             }),
@@ -69,14 +69,14 @@ fn login_page() -> Component {
     };
     let pass_box = {
         let password = {
-            let state = LOGIN_PAGE_STATE.lock().unwrap();
+            let state = SIGNUP_PAGE_STATE.lock().unwrap();
             let state = state.as_ref().unwrap();
             state.password.clone()
         };
         text_input(
             password,
             as_state(move |new_email| {
-                let mut state = LOGIN_PAGE_STATE.lock().unwrap();
+                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
                 let state = state.as_mut().unwrap();
                 state.set_password(new_email.into())
             }),
@@ -108,11 +108,11 @@ fn login_page() -> Component {
             .bg_color(Color::BEIGE)
             .dim((Length::FIT, Length::FIT))
             .wrap(false)
-            .content("Signup Instead")
+            .content("Login Instead")
             .dbg_name("SwitchSignup")
             .on_click(Box::new(move |_| {
                 let mut router = ROUTER.get().unwrap().lock().unwrap();
-                router.push("auth/signup");
+                router.push("auth/login");
                 false
             }))
             .build(),
@@ -126,7 +126,7 @@ fn login_page() -> Component {
         .gap(30)
         .children(vec![
             TextLayout::get_builder()
-                .content("Login")
+                .content("Signup")
                 .font_size(40)
                 .build(),
             Layout::get_col_builder()
@@ -138,15 +138,15 @@ fn login_page() -> Component {
         .build();
 }
 
-pub fn login_route() -> Route {
+pub fn signup_route() -> Route {
     return Route::leaf(
-        "login",
+        "signup",
         Box::new(|| {
-            let mut state = LOGIN_PAGE_STATE.lock().unwrap();
-            state.replace(LoginPageState::new());
+            let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
+            state.replace(SignupPageState::new());
         }),
         Box::new(|| {
-            let mut state = LOGIN_PAGE_STATE.lock().unwrap();
+            let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
             state.take();
         }),
         Box::new(|| login_page()),
