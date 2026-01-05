@@ -40,7 +40,7 @@ impl Router_t {
         self.path_changed = true;
     }
 
-    fn set(&mut self, new_path: &str){
+    fn set(&mut self, new_path: &str) {
         self.path_stack = vec![];
         self.current_path = new_path.into();
         self.path_changed = true;

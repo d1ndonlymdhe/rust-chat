@@ -4,7 +4,7 @@ use ui::components::{
 };
 
 use crate::{
-    auth::{login::login_route, signup::signup_route},
+    app::auth::{login::login_route, signup::signup_route},
     no_op,
     utils::router::{Route, outlet},
 };
