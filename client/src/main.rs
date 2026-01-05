@@ -1,7 +1,8 @@
 use reqwest::Error;
 use serde::Serialize;
+use shared::routes::auth::refresh::{RefreshRequest, RefreshResponse};
 use std::sync::{
-    Arc, Mutex, OnceLock,
+    OnceLock,
     mpsc::{self, Receiver, Sender},
 };
 use ui::{
@@ -15,7 +16,8 @@ use ui::{
 
 use crate::{
     auth::auth_route,
-    utils::router::{ROUTER, Route, Router, build_route, outlet},
+    utils::router::{Route, Router, build_route, outlet},
+    utils::session::Session,
 };
 
 mod auth;
@@ -25,19 +27,6 @@ extern crate ui;
 
 pub static BASE_URL: &'static str = "http://localhost:3000";
 
-pub struct HttpClient {
-    access_token: Option<String>,
-    refresh_token: Option<String>,
-}
-
-fn get_tokens() -> (Option<String>, Option<String>) {
-    let http_client = &HTTP_CLIENT.get().unwrap().lock().unwrap();
-    (
-        http_client.access_token.clone(),
-        http_client.refresh_token.clone(),
-    )
-}
-
 enum ClientModes {
     POST,
     GET,
@@ -46,7 +35,7 @@ enum ClientModes {
 fn get_client<Body>(
     mode: ClientModes,
     path: &str,
-    body: Option<Body>,
+    body: &Option<Body>,
     access_token: Option<String>,
 ) -> reqwest::blocking::RequestBuilder
 where
@@ -77,31 +66,108 @@ where
     client
 }
 
-pub fn post<Body>(path: &str, body: Option<Body>) -> Result<reqwest::blocking::Response, Error>
+fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
+    match refresh_token {
+        Some(refresh_token) => {
+            let res = reqwest::blocking::Client::new()
+                .post(format!("{BASE_URL}/refresh"))
+                .body(serde_json::to_string(&RefreshRequest { refresh_token }).unwrap())
+                .send();
+            match res {
+                Ok(res) => {
+                    let body = res.text();
+                    match body {
+                        Ok(body) => {
+                            let as_json = serde_json::from_str::<RefreshResponse>(&body);
+                            match as_json {
+                                Ok(tokens) => {
+                                    Session::set_token(tokens);
+                                    Ok(())
+                                }
+                                Err(e) => {
+                                    println!("Error parsing json {}", e.to_string());
+                                    Err(())
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            println!("Invalid Response from the server {}", err.to_string());
+                            Router::set("auth/login");
+                            Err(())
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("Error occurred while attempting refresh {}", e.to_string());
+                    Router::set("auth/login");
+                    Err(())
+                }
+            }
+        }
+        None => {
+            println!("No refresh token found navigate to login");
+            Router::set("auth/login");
+            Err(())
+        }
+    }
+}
+
+pub enum NetErr {
+    Reqwest(Error),
+    Refresh()
+}
+
+impl Into<String> for NetErr{
+    fn into(self) -> String {
+        match self {
+            NetErr::Reqwest(error) => error.to_string(),
+            NetErr::Refresh() => "Error occurred while refreshing tokens".into(),
+        }
+    }
+}
+
+impl From<Error> for NetErr{
+    fn from(value: Error) -> Self {
+        return NetErr::Reqwest(value);
+    }
+}
+
+fn post_inner<Body>(
+    path: &str,
+    body: &Option<Body>,
+    count: usize,
+) -> Result<reqwest::blocking::Response, NetErr>
 where
     Body: Serialize,
 {
-    let (access_token, refresh_token) = get_tokens();
+    let (access_token, refresh_token) = Session::get_tokens();
 
     let client = get_client(ClientModes::POST, &path, body, access_token);
 
     let res = client.send()?;
     if res.status().as_u16() == 401 {
         println!("UNAUTHORIZED ATTEMPTING REFRESH");
+        if count < 3 {
+            match refresh_the_token(refresh_token)
+            {
+                Ok(_) => Ok(post_inner(path, body, count + 1 )?),
+                Err(_) => Ok(post_inner(path, body, count + 1 )?)
+            }
+        }else{
+            println!("Max retires reached for refresh");
+            Err(NetErr::Refresh())
+        }
+    }else{
+        return Ok(res);
     }
-    return Ok(res);
 }
 
-fn init_http_client() {
-    let client = reqwest::blocking::Client::new();
-    let client = Arc::new(Mutex::new(HttpClient {
-        access_token: None,
-        refresh_token: None,
-    }));
-    HTTP_CLIENT.set(client).ok().unwrap();
+pub fn post<Body>(path: &str, body: &Option<Body>) -> Result<reqwest::blocking::Response, NetErr>
+where
+    Body: Serialize,
+{
+    return post_inner(path, &body, 0);
 }
-
-pub static HTTP_CLIENT: OnceLock<Arc<Mutex<HttpClient>>> = OnceLock::new();
 
 pub static UI_REBUILD_SIGNAL_SEND: OnceLock<Sender<()>> = OnceLock::new();
 
@@ -117,10 +183,8 @@ fn no_op() -> Box<dyn Fn() -> ()> {
 
 fn main() {
     let ui_rebuild_signal_recv = init_channel();
-    ROUTER
-        .set(Mutex::new(Router::new("auth/login")))
-        .ok()
-        .unwrap();
+    Session::init();
+    Router::init("auth/login");
     UIRoot::start(
         Box::new(move || {
             let start = std::time::Instant::now();
@@ -134,18 +198,13 @@ fn main() {
             );
 
             let path = {
-                let router = ROUTER.get().unwrap().lock().unwrap();
-                let current_path = router.current_path();
+                let current_path = Router::current_path();
                 current_path
             };
-            let path_changed = {
-                let router = ROUTER.get().unwrap().lock().unwrap();
-                router.path_changed()
-            };
+            let path_changed = { Router::path_changed() };
 
             let c = build_route(path, r, path_changed);
-            let mut router = ROUTER.get().unwrap().lock().unwrap();
-            router.reset_path_changed();
+            Router::reset_path_changed();
             println!("Layout time: {:?}", start.elapsed());
             c
         }),

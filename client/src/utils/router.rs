@@ -1,18 +1,18 @@
-use std::sync::{Mutex, OnceLock};
+use std::sync::{OnceLock, RwLock};
 
 use ui::components::{
     common::{Component, Length},
     layout::Layout,
 };
 
-pub struct Router {
+struct Router_t {
     current_path: String,
     path_stack: Vec<String>,
     path_changed: bool,
 }
 
-impl Router {
-    pub fn current_path(&self) -> Vec<String> {
+impl Router_t {
+    fn current_path(&self) -> Vec<String> {
         return self
             .current_path
             .split("/")
@@ -20,13 +20,13 @@ impl Router {
             .into_iter()
             .collect();
     }
-    pub fn path_changed(&self) -> bool {
+    fn path_changed(&self) -> bool {
         return self.path_changed;
     }
-    pub fn reset_path_changed(&mut self) {
+    fn reset_path_changed(&mut self) {
         self.path_changed = false;
     }
-    pub fn new(init_route: &str) -> Self {
+    fn new(init_route: &str) -> Self {
         Self {
             current_path: init_route.into(),
             path_stack: vec![],
@@ -34,17 +34,22 @@ impl Router {
         }
     }
 
-    pub fn push(&mut self, new_path: &str) {
+    fn push(&mut self, new_path: &str) {
         self.path_stack.push(self.current_path.clone());
         self.current_path = new_path.into();
         self.path_changed = true;
     }
 
-    pub fn can_go_back(&self) -> bool {
+    fn set(&mut self, new_path: &str){
+        self.path_stack = vec![];
+        self.current_path = new_path.into();
+        self.path_changed = true;
+    }
+    fn can_go_back(&self) -> bool {
         return !self.path_stack.is_empty();
     }
 
-    pub fn back(&mut self) {
+    fn back(&mut self) {
         self.current_path = match self.path_stack.last() {
             Some(p) => {
                 self.path_changed = true;
@@ -211,4 +216,48 @@ pub fn outlet(id: &str) -> Component {
         .build()
 }
 
-pub static ROUTER: OnceLock<Mutex<Router>> = OnceLock::new();
+static ROUTER: OnceLock<RwLock<Router_t>> = OnceLock::new();
+
+/// Thread-safe global router handle.
+pub struct Router;
+
+impl Router {
+    fn router() -> &'static RwLock<Router_t> {
+        ROUTER.get().expect("Router not initialized")
+    }
+
+    pub fn init(init_route: &str) {
+        ROUTER
+            .set(RwLock::new(Router_t::new(init_route)))
+            .ok()
+            .expect("Router already initialized");
+    }
+
+    pub fn current_path() -> Vec<String> {
+        Self::router().read().unwrap().current_path()
+    }
+
+    pub fn path_changed() -> bool {
+        Self::router().read().unwrap().path_changed()
+    }
+
+    pub fn reset_path_changed() {
+        Self::router().write().unwrap().reset_path_changed();
+    }
+
+    pub fn push(new_path: &str) {
+        Self::router().write().unwrap().push(new_path);
+    }
+
+    pub fn set(new_path: &str) {
+        Self::router().write().unwrap().set(new_path);
+    }
+
+    pub fn can_go_back() -> bool {
+        Self::router().read().unwrap().can_go_back()
+    }
+
+    pub fn back() {
+        Self::router().write().unwrap().back();
+    }
+}

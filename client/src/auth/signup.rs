@@ -10,9 +10,8 @@ use ui::{
 };
 
 use crate::{
-    ROUTER,
     utils::{
-        router::Route,
+        router::{Route, Router},
         state::as_state,
         text_input::{TextInputType, text_input},
     },
@@ -111,8 +110,7 @@ fn login_page() -> Component {
             .content("Login Instead")
             .dbg_name("SwitchSignup")
             .on_click(Box::new(move |_| {
-                let mut router = ROUTER.get().unwrap().lock().unwrap();
-                router.push("auth/login");
+                Router::push("auth/login");
                 false
             }))
             .build(),
