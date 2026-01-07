@@ -4,7 +4,7 @@ use shared::routes::auth::refresh::{RefreshRequest, RefreshResponse};
 
 use crate::utils::{router::Router, session::Session};
 
-pub static BASE_URL: &str = "http://localhost:3000";
+pub static BASE_URL: &str = "http://localhost:8000";
 
 #[derive(Clone, Copy)]
 pub enum ClientModes {

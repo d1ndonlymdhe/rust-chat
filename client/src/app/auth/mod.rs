@@ -11,7 +11,8 @@ use crate::{
 
 mod login;
 mod signup;
-
+mod signup_store;
+mod login_store;
 fn auth_screen() -> Component {
     Layout::get_row_builder()
         .dim((Length::FILL, Length::FILL))

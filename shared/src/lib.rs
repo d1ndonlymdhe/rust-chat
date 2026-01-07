@@ -33,20 +33,31 @@ where
     return d;
 }
 
-#[cfg_attr(feature = "server", derive(rocket::response::Responder))]
+
+
+#[cfg(feature = "server")]
+#[derive(rocket::response::Responder)]
+// #[cfg_attr(feature = "server", derive(rocket::response::Responder))]
 pub enum Response<T> {
     #[cfg_attr(feature = "server", response(status = 200))]
+    // #[response(status = 200)]
     Success(WebBox<ResponseStruct<T>>),
     #[cfg_attr(feature = "server", response(status = 404))]
+    // #[response(status = 404)]
     NotFound(WebBox<ResponseStruct<Option<T>>>),
     #[cfg_attr(feature = "server", response(status = 400))]
+    // #[response(status = 400)]
     BadRequest(WebBox<ResponseStruct<Option<T>>>),
     #[cfg_attr(feature = "server", response(status = 500))]
+    // #[response(status = 500)]
     InternalError(WebBox<ResponseStruct<Option<T>>>),
     #[cfg_attr(feature = "server", response(status = 401))]
+    // #[response(status = 401)]
     Unauthorized(WebBox<ResponseStruct<Option<T>>>),
 }
 
+
+#[cfg(feature = "server")]
 impl<T> Response<T>
 where
     T: Serialize + DeserializeOwned,
@@ -68,13 +79,23 @@ where
     }
 }
 
+#[cfg(feature = "server")]
 #[derive(Serialize, Deserialize)]
 pub struct ResponseStruct<T> {
-    success: bool,
-    message: String,
-    data: T,
+    pub success: bool,
+    pub message: String,
+    pub data: T,
 }
 
+#[cfg(not(feature = "server"))]
+#[derive(Serialize, Deserialize)]
+pub struct ResponseStruct<T> {
+    pub success: bool,
+    pub message: String,
+    pub data: Option<T>,
+}
+
+#[cfg(feature = "server")]
 impl<T> ResponseStruct<T>
 where
     T: Serialize + DeserializeOwned,

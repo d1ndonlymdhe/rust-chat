@@ -35,7 +35,6 @@ fn main() {
     Router::init("auth/login");
     UIRoot::start(
         Box::new(move || {
-            let start = std::time::Instant::now();
             let r = app_route();
             let path = {
                 let current_path = Router::current_path();
@@ -45,7 +44,6 @@ fn main() {
 
             let c = build_route(path, r, path_changed);
             Router::reset_path_changed();
-            println!("Layout time: {:?}", start.elapsed());
             c
         }),
         (1920, 1000),

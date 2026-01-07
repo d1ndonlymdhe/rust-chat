@@ -490,7 +490,7 @@ impl Base for Layout {
             child.measure_positions(next_pos);
 
             let (child_width, child_height) = child.get_draw_dim();
-            if idx < self.children.len() - 1 {
+            if idx < auto_children_len - 1 {
                 match self.direction {
                     Direction::Row => next_pos.0 += child_width + self.gap,
                     Direction::Column => {

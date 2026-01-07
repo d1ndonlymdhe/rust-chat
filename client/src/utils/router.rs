@@ -246,6 +246,9 @@ impl Router {
     }
 
     pub fn push(new_path: &str) {
+        if new_path == Self::router().read().unwrap().current_path {
+            return;
+        }
         Self::router().write().unwrap().push(new_path);
     }
 

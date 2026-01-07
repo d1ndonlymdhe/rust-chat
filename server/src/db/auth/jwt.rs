@@ -1,7 +1,7 @@
 use chrono::Utc;
 use macros::{any_cast, db_err, db_func};
 use rocket::{
-    Request, http::Status, outcome::Outcome, request::{self, FromRequest}
+    Request, error, http::Status, outcome::Outcome, request::{self, FromRequest}
 };
 use serde::{Deserialize, Serialize};
 use shared::AnyErr;
@@ -10,10 +10,12 @@ use sqlx::{query, query_as};
 
 use crate::db::auth::jwt;
 
+
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
     version: i64,
     user_id: i64,
+    #[serde(with = "chrono::serde::ts_nanoseconds")]
     exp: chrono::DateTime<chrono::Utc>,
 }
 #[async_trait]
@@ -78,10 +80,12 @@ pub fn get_refresh_claims(token: &str) -> Result<Claims, JWTError> {
             let claims = d.claims;
             return Ok(claims);
         }
-        Err(e) => match e.kind() {
+        Err(e) => {
+            error!("JWT decode error: {:?}", e);
+            match e.kind() {
             jsonwebtoken::errors::ErrorKind::ExpiredSignature => return Err(JWTError::Expired),
             _ => return Err(JWTError::Other),
-        },
+        }},
     }
 }
 
@@ -143,8 +147,26 @@ pub async fn get_access_token_from_refresh(
     let claims = get_refresh_claims(refresh_token)?;
     let user_id = claims.user_id;
     let access_token = get_access_token(user_id);
-    let new_refresh_token = refresh_refresh_token(pool, refresh_token).await?;
-    return Ok((access_token, new_refresh_token));
+    let new_refresh_token = refresh_refresh_token(pool, refresh_token).await;
+    match new_refresh_token {
+        Ok(refresh_token) => Ok((access_token,refresh_token.into())),
+        Err(err) => {match err {
+            RefreshRefreshTokenErr::ExpiredToken => {
+                error!("Refresh token expired");
+                Err(err.into())
+            },
+            RefreshRefreshTokenErr::InvalidToken => {
+                error!("Refresh token invalid");
+                Err(err.into())
+            },
+            RefreshRefreshTokenErr::Sqlx(error) => {
+                error!("SQLX error: {}", error.to_string());
+                Err(AnyErr(()))
+            }
+        }
+    },
+    }
+    // return Ok((access_token, new_refresh_token));
 }
 
 #[db_func]
@@ -182,37 +204,8 @@ pub async fn refresh_refresh_token(token: &str) -> Result<String, RefreshRefresh
 }
 
 #[db_func]
-pub async fn add_new_token_to_family(token: &str, family_id: i64) -> Result<(), sqlx::Error> {
-    let mut txn = pool.begin().await.unwrap();
-    // Invalidate all existing tokens in family
-    query!(
-        "UPDATE token_family_rel SET status = 'expired' WHERE token_family_id = $1",
-        family_id
-    )
-    .execute(&mut *txn)
-    .await?;
-    let res = query_as!(
-        IdOnly,
-        "INSERT INTO token (token) VALUES ($1) returning id",
-        token
-    )
-    .fetch_one(&mut *txn)
-    .await?;
-    query!(
-        "INSERT INTO token_family_rel (token_family_id,status,token_id) VALUES ($1,$2,$3)",
-        family_id,
-        "ACTIVE",
-        res.id
-    )
-    .execute(&mut *txn)
-    .await?;
-    txn.commit().await.unwrap();
-    return Ok(());
-}
-
-#[db_func]
 pub async fn add_token(token: &str, old_token: &str) -> Result<(), RefreshRefreshTokenErr> {
-    let mut txn = pool.begin().await.unwrap();
+    let mut txn = pool.begin().await?;
     let family_id = query_as!(IdOnly,"SELECT tfr.token_family_id as id FROM token_family_rel tfr JOIN token t on t.id = tfr.token_id WHERE t.token = $1",old_token).fetch_optional(&mut *txn).await?;
     if family_id.is_none() {
         return Err(RefreshRefreshTokenErr::InvalidToken);
@@ -275,5 +268,6 @@ pub async fn add_new_token_to_new_family(user_id: i64, token: &str) -> Result<Id
     )
     .execute(&mut *txn)
     .await?;
+    txn.commit().await.unwrap();
     return Ok(res);
 }

@@ -80,20 +80,18 @@ impl UIRoot {
                 }
             }
             if should_rebuild_ui {
-                let instant = Instant::now();
                 main_child = builder();
                 UIRoot::measure_dimensions(main_child.clone(), dim);
                 UIRoot::measure_positions(main_child.clone());
                 UIRoot::measure_overflows(main_child.clone(), dim, &mut scroll_map);
                 UIRoot::draw(&mut d, main_child.clone());
                 should_rebuild_ui = false;
-                println!("UI rebuild time = {:#?}",instant.elapsed());
+
             }
         }
     }
 
     fn draw(draw_handle: &mut RaylibDrawHandle, root_child: Component) {
-        let start = std::time::Instant::now();
         draw_handle.clear_background(Color::BLACK);
 
         let child = root_child.borrow();
@@ -129,7 +127,6 @@ impl UIRoot {
                 abs_draw = new_abs_draws;
             }
         }
-        println!("Draw time: {:?}", start.elapsed());
     }
 
     fn handle_key_event(

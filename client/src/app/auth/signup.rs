@@ -1,5 +1,8 @@
-use std::sync::Mutex;
-
+use shared::{
+    ResponseStruct,
+    routes::auth::signup::{SignupRequest, SignupResponse},
+};
+use std::thread;
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -9,78 +12,78 @@ use ui::{
     raylib::color::Color,
 };
 
-use crate::utils::{
-    router::{Route, Router},
-    state::as_state,
-    text_input::{TextInputType, text_input},
+use crate::{
+    UI_REBUILD_SIGNAL_SEND,
+    app::auth::signup_store::{SignupPageState, SignupState},
+    no_op,
+    utils::{
+        fetch::{ClientModes, fetch},
+        popup::popup,
+        router::{Route, Router},
+        state::as_state,
+        text_input::{TextInputType, text_input},
+    },
 };
 
-struct SignupPageState {
-    username: String,
-    password: String,
-    loading: bool,
-    error: Option<String>,
-}
-
-impl SignupPageState {
-    fn new() -> Self {
-        return Self {
-            username: "".into(),
-            password: "".into(),
-            loading: false,
-            error: None,
+fn execute_signup() {
+    SignupState::set_loading(true);
+    let username = SignupState::username();
+    let password = SignupState::password();
+    thread::spawn(|| {
+        let req_body = SignupRequest {
+            email: username.into(),
+            password: password.into(),
         };
-    }
-    fn set_password(&mut self, new_password: String) {
-        self.password = new_password;
-    }
-    fn set_username(&mut self, new_username: String) {
-        self.username = new_username;
-    }
-    fn set_loading(&mut self, new_loading: bool) {
-        self.loading = new_loading;
-    }
-    fn set_error(&mut self, new_error: Option<String>) {
-        self.error = new_error;
-    }
+        let res = fetch(ClientModes::POST, "/auth/signup", &Some(req_body));
+        match res {
+            Ok(res) => {
+                let body = res.text().unwrap();
+                println!("Signup response body: {}", body);
+                let res = serde_json::from_str::<ResponseStruct<SignupResponse>>(&body).unwrap();
+                if res.success {
+                    Router::push("auth/login");
+                } else {
+                    SignupState::set_error(Some(res.message));
+                    SignupState::set_loading(false);
+                }
+            }
+            Err(e) => {
+                SignupState::set_loading(false);
+                SignupState::set_error(Some(e.into()));
+            }
+        }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    });
 }
 
-static SIGNUP_PAGE_STATE: Mutex<Option<SignupPageState>> = Mutex::new(None);
+fn signup_page() -> Component {
+    let SignupPageState {
+        username,
+        password,
+        loading,
+        error,
+    } = SignupState::read_state();
 
-fn login_page() -> Component {
     let email_box = {
-        let username = {
-            let state = SIGNUP_PAGE_STATE.lock().unwrap();
-            let state = state.as_ref().unwrap();
-            state.username.clone()
-        };
+        let username = username;
         text_input(
             username,
-            as_state(move |new_email| {
-                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
-                let state = state.as_mut().unwrap();
-                state.set_username(new_email.into())
-            }),
+            as_state(move |new_email| SignupState::set_username(new_email.into())),
             TextInputType::Text,
         )
     };
     let pass_box = {
-        let password = {
-            let state = SIGNUP_PAGE_STATE.lock().unwrap();
-            let state = state.as_ref().unwrap();
-            state.password.clone()
-        };
+        let password = password;
         text_input(
             password,
-            as_state(move |new_email| {
-                let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
-                let state = state.as_mut().unwrap();
-                state.set_password(new_email.into())
+            as_state(move |new_password| {
+                SignupState::set_password(new_password.into());
             }),
             TextInputType::Password,
         )
     };
-    let form_children = vec![
+
+    let mut form_children = vec![
         TextLayout::get_builder()
             .dim((Length::FILL, Length::FIT))
             .content("Email: ")
@@ -95,7 +98,7 @@ fn login_page() -> Component {
             .padding((5, 5, 5, 5))
             .content("Continue")
             .on_click(Box::new(|_| {
-                // execute_login();
+                execute_signup();
                 false
             }))
             .bg_color(Color::BEIGE)
@@ -113,14 +116,17 @@ fn login_page() -> Component {
             }))
             .build(),
     ];
-    return Layout::get_col_builder()
-        .dim((Length::FILL, Length::FILL))
-        .bg_color(Color::RED)
-        .flex(9.5)
-        .cross_align(Alignment::Center)
-        .padding((10, 10, 10, 10))
-        .gap(30)
-        .children(vec![
+
+    if loading {
+        form_children.push(
+            TextLayout::get_builder()
+                .content("Loading...")
+                .dim((Length::FILL, Length::FIT))
+                .build(),
+        );
+    }
+
+    let mut children: Vec<Component> = vec![
             TextLayout::get_builder()
                 .content("Signup")
                 .font_size(40)
@@ -130,7 +136,21 @@ fn login_page() -> Component {
                 .cross_align(Alignment::Center)
                 .children(form_children)
                 .build(),
-        ])
+    ];
+    if let Some(message) = error {
+        children.push(popup(&message, Box::new(|| {
+            SignupState::set_error(None);
+        })));
+    }
+
+    return Layout::get_col_builder()
+        .dim((Length::FILL, Length::FILL))
+        .bg_color(Color::RED)
+        .flex(9.5)
+        .cross_align(Alignment::Center)
+        .padding((10, 10, 10, 10))
+        .gap(30)
+        .children(children)
         .build();
 }
 
@@ -138,13 +158,11 @@ pub fn signup_route() -> Route {
     return Route::leaf(
         "signup",
         Box::new(|| {
-            let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
-            state.replace(SignupPageState::new());
+            SignupState::init();
         }),
         Box::new(|| {
-            let mut state = SIGNUP_PAGE_STATE.lock().unwrap();
-            state.take();
+            SignupState::de_init();
         }),
-        Box::new(|| login_page()),
+        Box::new(|| signup_page()),
     );
 }
