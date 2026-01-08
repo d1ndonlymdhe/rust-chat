@@ -36,7 +36,6 @@ pub struct SignupState;
 
 impl SignupState {
     pub fn init() {
-        println!("Initializing signup state");
         match SIGNUP_PAGE_STATE.get() {
             Some(v) => {
                 let has_state = {

@@ -36,7 +36,7 @@ fn execute_login() {
                         access_token,
                         refresh_token
                     });
-                    Router::push("dashboard");
+                    Router::push("dashboard/conversations");
                 }else{
                     let message = body_data.message;
                     LoginState::set_error(Some(message));

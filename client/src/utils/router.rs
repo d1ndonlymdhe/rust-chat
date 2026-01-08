@@ -201,7 +201,7 @@ pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Compo
                     }
                 }
                 None => {
-                    panic!("NO MATCHING ROUTE FOUND")
+                    panic!("NO MATCHING ROUTE FOUND {}", next_path);
                 }
             }
         }

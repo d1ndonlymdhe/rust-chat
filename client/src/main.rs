@@ -47,7 +47,7 @@ fn main() {
             c
         }),
         (1920, 1000),
-        "Hello from lib",
+        "Raylib Rocket Chat Client",
         ui_rebuild_signal_recv,
     );
 }
