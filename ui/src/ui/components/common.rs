@@ -204,7 +204,8 @@ pub fn get_draw_dim(
                 let child = child.borrow();
                 let paddings = child.get_paddings();
                 let dims = child.get_draw_dim();
-                dims.1 + paddings.1 + paddings.3
+                // dims.1 + paddings.1 + paddings.3
+                dims.1
             });
             match direction {
                 Direction::Row => iter.max().unwrap_or(0),
@@ -218,7 +219,8 @@ pub fn get_draw_dim(
                 let child = child.borrow();
                 let paddings = child.get_paddings();
                 let dims = child.get_draw_dim();
-                dims.1 + paddings.1 + paddings.3
+                // dims.1 + paddings.1 + paddings.3
+                dims.1
             });
             let fit_height = match direction {
                 Direction::Row => iter.max().unwrap_or(0),

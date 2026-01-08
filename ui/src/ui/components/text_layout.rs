@@ -1,6 +1,6 @@
 use std::{cell::RefCell, ffi::CString, rc::Rc};
 
-use crate::components::common::Component;
+use crate::components::common::{Component, get_draw_dim};
 use crate::raylib::color::Color;
 
 use crate::components::{
@@ -240,8 +240,8 @@ impl Base for TextLayout {
         layout.children = vec![RawText::new(
             &self.content,
             self.font_size,
-            (0, 0, 0, 0),
-            // layout.padding,
+            // (0, 0, 0, 0),
+            layout.padding,
             self.text_color,
         )];
         let content_width = unsafe {
@@ -259,6 +259,7 @@ impl Base for TextLayout {
         );
 
         if self.wrap {
+            let (draw_width,_draw_height) = get_draw_dim(layout.dim, parent_draw_dim, &layout.children, layout.direction, layout.border_width);
             let max_width = draw_width - layout.padding.0 - layout.padding.2;
             if content_width > max_width {
                 let text_rows = get_text_rows(&self.content, max_width, self.font_size);
@@ -268,53 +269,57 @@ impl Base for TextLayout {
                         RawText::new(
                             row,
                             self.font_size,
-                            (0, 0, 0, 0), // layout.padding
+                            // (0, 0, 0, 0),
+                             layout.padding,
                             self.text_color,
                         ) as Component
                     })
                     .collect();
             }
+        }else{
+            layout.set_raw_dim(parent_draw_dim);
         }
+        // if layout.dim.0 == Length::FIT {
+        //     draw_width = layout
+        //         .children
+        //         .iter()
+        //         .map(|child| child.borrow().get_draw_dim().0)
+        //         .max()
+        //         .unwrap()
+        // }
+        // if let Length::FitPer(p) = layout.dim.0 {
+        //     draw_width = layout
+        //         .children
+        //         .iter()
+        //         .map(|child| child.borrow().get_draw_dim().0)
+        //         .max()
+        //         .unwrap();
+        //     draw_width = (draw_width * p) / 100
+        // }
+        // if layout.dim.1 == Length::FIT {
+        //     draw_height = layout
+        //         .children
+        //         .iter()
+        //         .map(|child| child.borrow().get_draw_dim().1)
+        //         .sum::<i32>()
+        //         + layout.gap * (layout.children.len() as i32 - 1);
+        // }
+        // if let Length::FitPer(p) = layout.dim.1 {
+        //     draw_height = layout
+        //         .children
+        //         .iter()
+        //         .map(|child| child.borrow().get_draw_dim().1)
+        //         .max()
+        //         .unwrap();
+        //     draw_height = (draw_height * p) / 100
+        // }
 
-        if layout.dim.0 == Length::FIT {
-            draw_width = layout
-                .children
-                .iter()
-                .map(|child| child.borrow().get_draw_dim().0)
-                .max()
-                .unwrap()
-        }
-        if let Length::FitPer(p) = layout.dim.0 {
-            draw_width = layout
-                .children
-                .iter()
-                .map(|child| child.borrow().get_draw_dim().0)
-                .max()
-                .unwrap();
-            draw_width = (draw_width * p) / 100
-        }
-        if layout.dim.1 == Length::FIT {
-            draw_height = layout
-                .children
-                .iter()
-                .map(|child| child.borrow().get_draw_dim().1)
-                .sum::<i32>()
-                + layout.gap * (layout.children.len() as i32 - 1);
-        }
-        if let Length::FitPer(p) = layout.dim.1 {
-            draw_height = layout
-                .children
-                .iter()
-                .map(|child| child.borrow().get_draw_dim().1)
-                .max()
-                .unwrap();
-            draw_height = (draw_height * p) / 100
-        }
-
-        layout.draw_dim = (
-            draw_width + layout_paddings.0 + layout_paddings.2,
-            draw_height + layout_paddings.1 + layout_paddings.3,
-        );
+        // layout.draw_dim = (
+        //     draw_width,
+        //     draw_height
+        //     // draw_width + layout_paddings.0 + layout_paddings.2,
+        //     // draw_height + layout_paddings.1 + layout_paddings.3,
+        // );
     }
 
     fn get_draw_dim(&self) -> (i32, i32) {
