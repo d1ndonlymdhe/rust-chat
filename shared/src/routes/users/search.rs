@@ -3,16 +3,17 @@ use serde::{Deserialize, Serialize};
 use crate::db::signup::User;
 
 
+#[derive(Serialize,Deserialize)]
 pub struct SearchQuery {
-    name: String,
-    limit: i64,
-    page: i64
+    pub name: String,
+    pub limit: i64,
+    pub page: i64
 }
 
 #[derive(Serialize,Deserialize)]
 pub struct SearchUser {
-    id: i64,
-    username: String
+    pub id: i64,
+    pub username: String
 }
 impl From<User> for SearchUser {
     fn from(value: User) -> Self {
@@ -23,7 +24,7 @@ impl From<User> for SearchUser {
 
 #[derive(Serialize,Deserialize)]
 pub struct  SearchUserResult {
-    result: Vec<SearchUser>
+    pub result: Vec<SearchUser>
 }
 
 impl SearchUserResult {

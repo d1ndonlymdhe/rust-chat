@@ -1,5 +1,13 @@
-use std::sync::{OnceLock, RwLock};
+use std::{
+    sync::{OnceLock, RwLock},
+    thread,
+};
 
+use reqwest::Method;
+use shared::{
+    ResponseStruct,
+    routes::users::{self, search::{SearchQuery, SearchUserResult}},
+};
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -10,20 +18,63 @@ use ui::{
 };
 
 use crate::{
-    no_op,
-    utils::{
+    UI_REBUILD_SIGNAL_SEND, no_op, utils::{
+        fetch::{ClientModes, fetch},
         router::Route,
         state::as_state,
         text_input::{TextInputType, text_input},
-    },
+    }
 };
 
 struct SearchPageStateT {
     search_query: String,
     results: Vec<String>,
+    loading: bool,
+    error: Option<String>,
 }
 
-pub static SEARCH_PAGE_STATE: OnceLock<RwLock<Option<SearchPageStateT>>> = OnceLock::new();
+static SEARCH_PAGE_STATE: OnceLock<RwLock<Option<SearchPageStateT>>> = OnceLock::new();
+
+fn execute_search() {
+    let query = SearchState::search_query();
+    if query.trim().is_empty() {
+        return;
+    }
+    SearchState::set_loading(true);
+    thread::spawn(move || {
+        let res = fetch(
+            ClientModes::GET,
+            "/users/search",
+            &Some(SearchQuery {
+                name: query.to_string(),
+                limit: 20,
+                page: 1,
+            }),
+        );
+        match res {
+            Ok(response) => {
+                let text = response.text().unwrap();
+                let res_json =
+                    serde_json::from_str::<ResponseStruct<SearchUserResult>>(&text).unwrap();
+                if res_json.success {
+                    let result = res_json.data.unwrap();
+                    let usernames = result.result.into_iter().map(|u|{u.username}).collect::<Vec<String>>();
+                    println!("Search result text");
+                    println!("{text}");
+                    SearchState::set_results(usernames);
+                    
+                } else {
+                    SearchState::set_results(vec![]);
+                }
+            }
+            Err(_) => {
+                SearchState::set_results(vec![]);
+            }
+        }
+        SearchState::set_loading(false);
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    });
+}
 
 struct SearchState;
 impl SearchState {
@@ -39,6 +90,8 @@ impl SearchState {
                     state.replace(SearchPageStateT {
                         search_query: "".into(),
                         results: vec![],
+                        loading: false,
+                        error: None,
                     });
                 }
             }
@@ -47,6 +100,8 @@ impl SearchState {
                     .set(RwLock::new(Some(SearchPageStateT {
                         search_query: "".into(),
                         results: vec![],
+                        loading: false,
+                        error: None
                     })))
                     .ok()
                     .unwrap();
@@ -72,10 +127,20 @@ impl SearchState {
         let state = state.as_mut().unwrap();
         state.search_query = new_query;
     }
+    pub fn set_loading(is_loading: bool) {
+        let mut state = Self::state().write().unwrap();
+        let state = state.as_mut().unwrap();
+        state.loading = is_loading;
+    }
     pub fn set_results(new_results: Vec<String>) {
         let mut state = Self::state().write().unwrap();
         let state = state.as_mut().unwrap();
         state.results = new_results;
+    }
+    pub fn set_error(new_error: Option<String>) {
+        let mut state = Self::state().write().unwrap();
+        let state = state.as_mut().unwrap();
+        state.error = new_error;
     }
     pub fn search_query() -> String {
         let state = Self::state().read().unwrap();
@@ -86,6 +151,16 @@ impl SearchState {
         let state = Self::state().read().unwrap();
         let state = state.as_ref().unwrap();
         state.results.clone()
+    }
+    pub fn loading() -> bool {
+        let state = Self::state().read().unwrap();
+        let state = state.as_ref().unwrap();
+        state.loading
+    }
+    pub fn error() -> Option<String> {
+        let state = Self::state().read().unwrap();
+        let state = state.as_ref().unwrap();
+        state.error.clone()
     }
 }
 
@@ -99,6 +174,7 @@ fn search_layout() -> Component {
 
 fn search_bar() -> Component {
     let search_query = SearchState::search_query();
+    let loading = SearchState::loading();
     Layout::get_row_builder()
         .padding((0, 10, 0, 0))
         .dim((Length::FillPer(70), Length::FILL))
@@ -121,6 +197,13 @@ fn search_bar() -> Component {
                 .cross_align(Alignment::Center)
                 .main_align(Alignment::Center)
                 .content("Search")
+                .on_click(Box::new(move |_|{
+                    if loading {
+                        return false;
+                    }
+                    execute_search();
+                    false
+                }))
                 .font_size(24)
                 .flex(8.0)
                 .bg_color(Color::LIGHTGRAY)
@@ -131,26 +214,47 @@ fn search_bar() -> Component {
 
 fn search_results() -> Component {
     let results = SearchState::results();
+    let loading = SearchState::loading();
+    let error = SearchState::error();
     Layout::get_col_builder()
         .flex(95.0)
         .cross_align(Alignment::Center)
         .main_align(Alignment::Start)
-        .padding((0,10,0,10))
+        .padding((0, 10, 0, 10))
         .children({
-            if results.is_empty() {
+            if let Some(err) = error {
                 vec![
                     TextLayout::get_builder()
-                        .content("No results found")
+                        .content(&format!("Error: {}", err))
                         .font_size(20)
                         .build() as Component,
                 ]
-            } else {
-                results
-                    .iter()
-                    .map(|res| {
-                        TextLayout::get_builder().content(res).font_size(20).build() as Component
-                    })
-                    .collect()
+            } else{
+                if loading {
+                    vec![
+                        TextLayout::get_builder()
+                            .content("Loading...")
+                            .font_size(20)
+                            .build() as Component,
+                    ]
+                } else {
+                    if results.is_empty() {
+                        vec![
+                            TextLayout::get_builder()
+                                .content("No results found")
+                                .font_size(20)
+                                .build() as Component,
+                        ]
+                    } else {
+                        results
+                            .iter()
+                            .map(|res| {
+                                TextLayout::get_builder().content(res).font_size(20).build()
+                                    as Component
+                            })
+                            .collect()
+                    }
+                }
             }
         })
         .build()
