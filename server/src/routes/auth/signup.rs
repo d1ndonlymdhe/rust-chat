@@ -2,13 +2,13 @@ use rocket::{State, serde::json::Json};
 use shared::{
     Response, routes::auth::signup::{SignupRequest, SignupResponse}
 };
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 use crate::db;
 
 #[post("/signup", data = "<payload>")]
 pub async fn signup(
-    pool: &State<SqlitePool>,
+    pool: &State<PgPool>,
     payload: Json<SignupRequest>,
 ) -> Response<SignupResponse> {
     let SignupRequest { email, password } = payload.0;

@@ -1,11 +1,11 @@
 use rocket::{State, serde::json::Json};
 use shared::{Response, routes::auth::login::{LoginRequest, LoginResponse}};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 use crate::db::auth::{jwt::{get_access_token_from_refresh, get_new_refresh_token}, login::check_password};
 
 #[post("/login",data="<payload>")]
-pub async fn login(pool: &State<SqlitePool>, payload:Json<LoginRequest>)->Response<LoginResponse>{
+pub async fn login(pool: &State<PgPool>, payload:Json<LoginRequest>)->Response<LoginResponse>{
     let LoginRequest {email,password} = payload.0;
     let user = check_password(pool, &email, &password).await;
     if user.is_ok() {

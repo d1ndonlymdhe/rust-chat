@@ -4,7 +4,7 @@ extern crate rocket;
 use std::{env, str::FromStr};
 
 use dotenvy::dotenv;
-use sqlx::{SqlitePool, sqlite::SqliteConnectOptions};
+use sqlx::{PgPool, postgres::PgConnectOptions};
 
 use crate::routes::{auth::{login::login, refresh::refresh, signup::signup}, users::search::search_users};
 
@@ -19,11 +19,9 @@ fn index() -> &'static str {
 async fn rocket() -> _ {
     let _ = dotenv();
     let db_url = env::var("DATABASE_URL").expect("DB_URL not set");
-    let connect_options = SqliteConnectOptions::from_str(&db_url)
-        .unwrap()
-        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
-        .synchronous(sqlx::sqlite::SqliteSynchronous::Normal);
-    let pool = SqlitePool::connect_with(connect_options)
+    let connect_options = PgConnectOptions::from_str(&db_url)
+        .unwrap();
+    let pool = PgPool::connect_with(connect_options)
         .await
         .expect("Unable to connect to database");
     sqlx::migrate!("./migrations")

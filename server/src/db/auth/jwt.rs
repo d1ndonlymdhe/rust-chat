@@ -14,7 +14,7 @@ use crate::db::auth::jwt;
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
     version: i64,
-    user_id: i64,
+    user_id: i32,
     #[serde(with = "chrono::serde::ts_nanoseconds")]
     exp: chrono::DateTime<chrono::Utc>,
 }
@@ -43,7 +43,7 @@ impl<'r> FromRequest<'r> for Claims {
 }
 
 impl Claims {
-    pub fn new_v1(user_id: i64, exp: chrono::DateTime<chrono::Utc>) -> Self {
+    pub fn new_v1(user_id: i32, exp: chrono::DateTime<chrono::Utc>) -> Self {
         return Claims {
             version: 1,
             user_id: user_id,
@@ -110,7 +110,7 @@ pub fn get_access_claims(token: &str) -> Result<Claims, JWTError> {
     }
 }
 
-pub fn get_refresh_token(user_id: i64) -> String {
+pub fn get_refresh_token(user_id: i32) -> String {
     // 3 days expiry for refresh token
     let expiration = Utc::now().checked_add_days(chrono::Days::new(3)).unwrap();
     let claims = Claims::new_v1(user_id, expiration);
@@ -124,7 +124,7 @@ pub fn get_refresh_token(user_id: i64) -> String {
     return new_token;
 }
 
-pub fn get_access_token(user_id: i64) -> String {
+pub fn get_access_token(user_id: i32) -> String {
     // 15 mins expiry for access token
     let expiration = Utc::now()
         .checked_add_signed(chrono::Duration::minutes(15))
@@ -170,7 +170,7 @@ pub async fn get_access_token_from_refresh(
 }
 
 #[db_func]
-pub async fn get_new_refresh_token(user_id: i64) -> Result<String, ()> {
+pub async fn get_new_refresh_token(user_id: i32) -> Result<String, ()> {
     let token = get_refresh_token(user_id);
     let r = add_new_token_to_new_family(pool, user_id, &token).await;
     if r.is_err() {
@@ -191,7 +191,7 @@ pub async fn refresh_refresh_token(token: &str) -> Result<String, RefreshRefresh
 
     match claims {
         Ok(claims) => {
-            let user_id: i64 = claims.user_id;
+            let user_id = claims.user_id;
             let new_token = get_refresh_token(user_id);
             add_token(pool, &new_token, &token).await?;
             Ok(new_token)
@@ -237,7 +237,7 @@ pub async fn add_token(token: &str, old_token: &str) -> Result<(), RefreshRefres
 }
 
 #[db_func]
-pub async fn add_new_token_to_new_family(user_id: i64, token: &str) -> Result<IdOnly, sqlx::Error> {
+pub async fn add_new_token_to_new_family(user_id: i32, token: &str) -> Result<IdOnly, sqlx::Error> {
     let mut txn = pool.begin().await.unwrap();
     let family_id = query_as!(
         IdOnly,

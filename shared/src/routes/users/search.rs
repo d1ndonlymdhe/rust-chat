@@ -6,13 +6,13 @@ use crate::db::signup::User;
 #[derive(Serialize,Deserialize)]
 pub struct SearchQuery {
     pub name: String,
-    pub limit: i64,
-    pub page: i64
+    pub limit: i32,
+    pub page: i32
 }
 
 #[derive(Serialize,Deserialize)]
 pub struct SearchUser {
-    pub id: i64,
+    pub id: i32,
     pub username: String
 }
 impl From<User> for SearchUser {

@@ -7,7 +7,7 @@ pub fn db_func(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as ItemFn);
 
     // Create the new argument
-    let pool_arg: FnArg = parse_quote! { pool: &sqlx::SqlitePool };
+    let pool_arg: FnArg = parse_quote! { pool: &sqlx::PgPool };
 
     // Insert it at the beginning of the inputs
     input.sig.inputs.insert(0, pool_arg);
