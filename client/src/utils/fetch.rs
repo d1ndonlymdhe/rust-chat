@@ -139,6 +139,20 @@ where
     }
 }
 
+
+pub fn public_fetch<Body>(
+    method: ClientModes,
+    path: &str,
+    body: &Option<Body>,
+) -> Result<reqwest::blocking::Response, NetErr>
+where
+    Body: Serialize,
+{
+    let client = get_client(method, &path, body, None);
+    let res = client.send()?;
+    Ok(res)
+}
+
 pub fn fetch<Body>(
     method: ClientModes,
     path: &str,

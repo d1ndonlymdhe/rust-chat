@@ -13,7 +13,7 @@ pub enum LoginError{
 #[db_func]
 pub async fn check_password(username:&str,password:&str) -> Result<User,LoginError>{
     let user = query_as!(User,
-        r#"SELECT id,username,hash_password,created_at as "created_at!:String",updated_at as "updated_at!:String" from users where username = $1"#
+        r#"SELECT id,username,hash_password,created_at,updated_at from users where username = $1"#
         ,username).fetch_optional(pool).await;
     if let Err(e) = user {
         return Err(e.into());

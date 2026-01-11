@@ -10,7 +10,7 @@ pub struct SearchQuery {
     pub page: i32
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize,Deserialize,Clone)]
 pub struct SearchUser {
     pub id: i32,
     pub username: String

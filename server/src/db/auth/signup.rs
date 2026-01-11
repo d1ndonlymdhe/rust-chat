@@ -7,7 +7,7 @@ use shared::AnyErr;
 
 #[db_func]
 async fn get_user_from_username(username:&str) -> Result<User,sqlx::Error> {
-    let res = sqlx::query_as!(User,r#"SELECT id,username,hash_password,created_at as "created_at!:String",updated_at as "updated_at!:String" from users where username = $1"#,username).fetch_one(pool).await;
+    let res = sqlx::query_as!(User,r#"SELECT id,username,hash_password,created_at,updated_at from users where username = $1"#,username).fetch_one(pool).await;
     return res;
 }
 

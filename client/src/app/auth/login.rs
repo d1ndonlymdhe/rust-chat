@@ -12,7 +12,7 @@ use ui::{
 };
 
 use crate::{UI_REBUILD_SIGNAL_SEND, app::auth::login_store::{LoginPageState, LoginState}, utils::{
-    fetch::{ClientModes, fetch}, popup::popup, router::{Route, Router}, session::Session, state::as_state, text_input::{TextInputType, text_input}
+    fetch::{ClientModes, public_fetch}, popup::popup, router::{Route, Router}, session::Session, state::as_state, text_input::{TextInputType, text_input}
 }};
 
 
@@ -25,7 +25,7 @@ fn execute_login() {
             email: username.into(),
             password: password.into(),
         };
-        let res = fetch(ClientModes::POST, "/auth/login", &Some(req_body));
+        let res = public_fetch(ClientModes::POST, "/auth/login", &Some(req_body));
         match res {
             Ok(body) => {
                 let body_text = body.text().unwrap();

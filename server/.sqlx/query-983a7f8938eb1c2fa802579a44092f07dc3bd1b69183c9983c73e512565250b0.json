@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO token_family (user_id) VALUES ($1) returning id",
+  "query": "INSERT INTO conversation (title) VALUES ($1) RETURNING id",
   "describe": {
     "columns": [
       {
@@ -11,12 +11,12 @@
     ],
     "parameters": {
       "Left": [
-        "Int4"
+        "Text"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "626ae86ffe2df6e0fdb939b154737bcf186fe25cbd0ff243e513123505c2cc3d"
+  "hash": "983a7f8938eb1c2fa802579a44092f07dc3bd1b69183c9983c73e512565250b0"
 }

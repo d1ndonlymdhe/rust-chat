@@ -1,12 +1,8 @@
-use std::{
-    sync::{OnceLock, RwLock},
-    thread,
-};
+use std::thread;
 
-use reqwest::Method;
 use shared::{
     ResponseStruct,
-    routes::users::{self, search::{SearchQuery, SearchUserResult}},
+    routes::{chat::conversation::{CreateConversationRequest, CreateConversationResponse}, users::search::{SearchQuery, SearchUserResult}},
 };
 use ui::{
     components::{
@@ -18,22 +14,16 @@ use ui::{
 };
 
 use crate::{
-    UI_REBUILD_SIGNAL_SEND, no_op, utils::{
+    UI_REBUILD_SIGNAL_SEND,
+    utils::{
         fetch::{ClientModes, fetch},
         router::Route,
         state::as_state,
         text_input::{TextInputType, text_input},
-    }
+    },
 };
 
-struct SearchPageStateT {
-    search_query: String,
-    results: Vec<String>,
-    loading: bool,
-    error: Option<String>,
-}
-
-static SEARCH_PAGE_STATE: OnceLock<RwLock<Option<SearchPageStateT>>> = OnceLock::new();
+use super::search_store::SearchState;
 
 fn execute_search() {
     let query = SearchState::search_query();
@@ -58,11 +48,9 @@ fn execute_search() {
                     serde_json::from_str::<ResponseStruct<SearchUserResult>>(&text).unwrap();
                 if res_json.success {
                     let result = res_json.data.unwrap();
-                    let usernames = result.result.into_iter().map(|u|{u.username}).collect::<Vec<String>>();
                     println!("Search result text");
                     println!("{text}");
-                    SearchState::set_results(usernames);
-                    
+                    SearchState::set_results(result.result);
                 } else {
                     SearchState::set_results(vec![]);
                 }
@@ -76,92 +64,35 @@ fn execute_search() {
     });
 }
 
-struct SearchState;
-impl SearchState {
-    pub fn init() {
-        match SEARCH_PAGE_STATE.get() {
-            Some(v) => {
-                let has_state = {
-                    let state = v.read().unwrap();
-                    state.is_some()
-                };
-                if !has_state {
-                    let mut state = v.write().unwrap();
-                    state.replace(SearchPageStateT {
-                        search_query: "".into(),
-                        results: vec![],
-                        loading: false,
-                        error: None,
-                    });
+fn create_conversation_with_user(user_id: i32) {
+    thread::spawn(move || {
+        let res = fetch(
+            ClientModes::POST,
+            "/chat/conversation/create",
+            &Some(
+                CreateConversationRequest{
+                    participant_ids: vec![user_id],
+                }
+            )
+        );
+        match res {
+            Ok(response) => {
+                let text = response.text().unwrap();
+                let res_json =
+                    serde_json::from_str::<ResponseStruct<CreateConversationResponse>>(&text).unwrap();
+                if res_json.success {
+                    let conversation_details = res_json.data.unwrap();
+                    println!("Created conversation with ID: {}", conversation_details.conversation_id);
+                    println!("Created conversation between users: {:?}", conversation_details.members.iter().map(|v|{v.username.clone()}).collect::<Vec<_>>());
+                } else {
+                    SearchState::set_error(Some(res_json.message));
                 }
             }
-            None => {
-                SEARCH_PAGE_STATE
-                    .set(RwLock::new(Some(SearchPageStateT {
-                        search_query: "".into(),
-                        results: vec![],
-                        loading: false,
-                        error: None
-                    })))
-                    .ok()
-                    .unwrap();
+            Err(e) => {
+                SearchState::set_error(Some(e.into()));
             }
         }
-    }
-    pub fn de_init() {
-        match SEARCH_PAGE_STATE.get() {
-            Some(v) => {
-                let mut state = v.write().unwrap();
-                state.take();
-            }
-            None => {}
-        }
-    }
-    fn state() -> &'static RwLock<Option<SearchPageStateT>> {
-        SEARCH_PAGE_STATE
-            .get()
-            .expect("Search Page State not initialized")
-    }
-    pub fn set_search_query(new_query: String) {
-        let mut state = Self::state().write().unwrap();
-        let state = state.as_mut().unwrap();
-        state.search_query = new_query;
-    }
-    pub fn set_loading(is_loading: bool) {
-        let mut state = Self::state().write().unwrap();
-        let state = state.as_mut().unwrap();
-        state.loading = is_loading;
-    }
-    pub fn set_results(new_results: Vec<String>) {
-        let mut state = Self::state().write().unwrap();
-        let state = state.as_mut().unwrap();
-        state.results = new_results;
-    }
-    pub fn set_error(new_error: Option<String>) {
-        let mut state = Self::state().write().unwrap();
-        let state = state.as_mut().unwrap();
-        state.error = new_error;
-    }
-    pub fn search_query() -> String {
-        let state = Self::state().read().unwrap();
-        let state = state.as_ref().unwrap();
-        state.search_query.clone()
-    }
-    pub fn results() -> Vec<String> {
-        let state = Self::state().read().unwrap();
-        let state = state.as_ref().unwrap();
-        state.results.clone()
-    }
-    pub fn loading() -> bool {
-        let state = Self::state().read().unwrap();
-        let state = state.as_ref().unwrap();
-        state.loading
-    }
-    pub fn error() -> Option<String> {
-        let state = Self::state().read().unwrap();
-        let state = state.as_ref().unwrap();
-        state.error.clone()
-    }
+    });
 }
 
 fn search_layout() -> Component {
@@ -246,19 +177,71 @@ fn search_results() -> Component {
                                 .build() as Component,
                         ]
                     } else {
-                        results
-                            .iter()
-                            .map(|res| {
-                                TextLayout::get_builder().content(res).font_size(20).build()
-                                    as Component
-                            })
-                            .collect()
+                        vec![search_results_results()]
                     }
                 }
             }
         })
         .build()
 }
+
+fn search_results_results() -> Component {
+
+    Layout::get_col_builder()
+        .dim((Length::FillPer(30), Length::FILL))
+        .cross_align(Alignment::Center)
+        .main_align(Alignment::Start)
+        .gap(10)
+        .children({
+            let mut children = vec![
+                Layout::get_row_builder()
+                    .dim((Length::FILL, Length::FIT))
+                    .bg_color(Color::GRAY)
+                    .cross_align(Alignment::Center)
+                    .overflow_y(false)
+                    .children(vec![TextLayout::get_builder()
+                        .dim((Length::FILL, Length::FIT))
+                        .padding((5, 10, 5, 10))
+                        .content("Click to start chatting")
+                        .font_size(20)
+                        .build()])
+                    .build() as Component,
+            ];
+            let results = SearchState::results();
+            children.extend(
+                results
+                    .into_iter()
+                    .map(|res| {
+                        Layout::get_row_builder()
+                            .dim((Length::FILL, Length::FIT))
+                            .bg_color(Color::CYAN)
+                            .cross_align(Alignment::Center)
+                            .overflow_y(false)
+                            .on_click(Box::new(move |_|{
+                                let loading = SearchState::loading();
+                                if loading {
+                                    return false;
+                                }
+                                create_conversation_with_user(res.id);
+                                false
+                            }))
+                            .children(vec![TextLayout::get_builder()
+                                .dim((Length::FILL, Length::FIT))
+                                .padding((5, 10, 5, 10))
+                                .content(&res.username)
+                                .wrap(true)
+                                .font_size(50)
+                                .build()])
+                            .build() as Component
+                    })
+                    .collect::<Vec<Component>>(),
+            );
+
+            children
+        })
+        .build()
+}
+
 
 pub fn search_route() -> Route {
     Route::leaf(

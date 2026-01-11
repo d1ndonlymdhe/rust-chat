@@ -1,16 +1,19 @@
 {
-  "db_name": "SQLite",
+  "db_name": "PostgreSQL",
   "query": "INSERT INTO users (username,hash_password) VALUES ($1,$2) returning id",
   "describe": {
     "columns": [
       {
-        "name": "id",
         "ordinal": 0,
-        "type_info": "Integer"
+        "name": "id",
+        "type_info": "Int4"
       }
     ],
     "parameters": {
-      "Right": 2
+      "Left": [
+        "Text",
+        "Text"
+      ]
     },
     "nullable": [
       false

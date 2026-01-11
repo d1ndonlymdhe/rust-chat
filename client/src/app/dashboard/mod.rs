@@ -14,6 +14,7 @@ use crate::{
 };
 
 mod search;
+mod search_store;
 mod conversations;
 #[derive(Clone,Copy,PartialEq)]
 pub enum Menu {
@@ -78,8 +79,6 @@ impl DashboardState {
         s.active_menu = new_menu;
     }
 }
-
-
 
 
 fn dashboard() -> Component {

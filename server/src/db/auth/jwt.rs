@@ -13,10 +13,10 @@ use crate::db::auth::jwt;
 
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
-    version: i64,
-    user_id: i32,
+    pub version: i64,
+    pub user_id: i32,
     #[serde(with = "chrono::serde::ts_nanoseconds")]
-    exp: chrono::DateTime<chrono::Utc>,
+    pub exp: chrono::DateTime<chrono::Utc>,
 }
 #[async_trait]
 impl<'r> FromRequest<'r> for Claims {

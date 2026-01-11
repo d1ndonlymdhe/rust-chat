@@ -1,10 +1,14 @@
 {
-  "db_name": "SQLite",
+  "db_name": "PostgreSQL",
   "query": "INSERT INTO token_family_rel (token_family_id,status,token_id) VALUES ($1,$2,$3)",
   "describe": {
     "columns": [],
     "parameters": {
-      "Right": 3
+      "Left": [
+        "Int4",
+        "Text",
+        "Int4"
+      ]
     },
     "nullable": []
   },

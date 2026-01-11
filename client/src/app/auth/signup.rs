@@ -17,7 +17,7 @@ use crate::{
     app::auth::signup_store::{SignupPageState, SignupState},
     no_op,
     utils::{
-        fetch::{ClientModes, fetch},
+        fetch::{ClientModes, fetch, public_fetch},
         popup::popup,
         router::{Route, Router},
         state::as_state,
@@ -34,7 +34,7 @@ fn execute_signup() {
             email: username.into(),
             password: password.into(),
         };
-        let res = fetch(ClientModes::POST, "/auth/signup", &Some(req_body));
+        let res = public_fetch(ClientModes::POST, "/auth/signup", &Some(req_body));
         match res {
             Ok(res) => {
                 let body = res.text().unwrap();

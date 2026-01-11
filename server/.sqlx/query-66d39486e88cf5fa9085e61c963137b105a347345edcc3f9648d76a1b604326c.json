@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cm.conversation_id as id, c.title as title FROM conversation_member cm JOIN conversation c on c.id = cm.conversation_id\n        GROUP BY cm.conversation_id, c.title\n        HAVING COUNT(cm.user_id) = $1\n        AND COUNT(*) FILTER (WHERE cm.user_id = ANY($2)) = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "title",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "66d39486e88cf5fa9085e61c963137b105a347345edcc3f9648d76a1b604326c"
+}
