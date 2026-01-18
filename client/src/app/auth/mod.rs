@@ -43,7 +43,7 @@ pub fn auth_route() -> Route {
         no_op(),
         no_op(),
         "auth_outlet",
-        Box::new(|| auth_screen()),
+        Box::new(|route_params| auth_screen()),
         vec![login_route(), signup_route()],
     );
 }

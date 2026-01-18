@@ -1,24 +1,65 @@
-use std::sync::{OnceLock, RwLock};
+use std::{collections::HashMap, sync::{OnceLock, RwLock}};
 
 use ui::components::{
     common::{Component, Length},
     layout::Layout,
 };
 
-struct Router_t {
+struct RouterT {
     current_path: String,
     path_stack: Vec<String>,
     path_changed: bool,
 }
 
-impl Router_t {
-    fn current_path(&self) -> Vec<String> {
-        return self
+
+
+#[derive(Clone)]
+pub struct RouteParam{
+    key: String,
+    value: String,
+}
+
+#[derive(Clone)]
+pub struct RouteParams(Vec<RouteParam>);
+impl RouteParams {
+    pub fn get(&self, key: &str) -> Option<String> {
+        for param in self.0.iter() {
+            if param.key == key {
+                return Some(param.value.clone());
+            }
+        }
+        return None;
+    }
+}
+
+impl RouterT {
+    fn current_path(&self) -> (Vec<String>,RouteParams) {
+        let mut path_vec: Vec<String> = self
             .current_path
             .split("/")
             .map(|v| v.into())
             .into_iter()
             .collect();
+        let last_el = path_vec.last().cloned();
+        if let Some(last_el) = last_el {
+            let split_at_question = last_el.split_once("?");
+            if let Some((last_path_part,params_part)) = split_at_question {
+                let mut params_vec: Vec<RouteParam> = vec![];
+                for param_kv in params_part.split("&") {
+                    let kv_split = param_kv.split_once("=");
+                    if let Some((k,v)) = kv_split {
+                        params_vec.push(RouteParam{
+                            key:k.into(),
+                            value:v.into(),
+                        });
+                    }
+                }
+                path_vec.pop();
+                path_vec.push(last_path_part.into());
+                return (path_vec, RouteParams(params_vec));
+            }
+        }
+        return (path_vec, RouteParams(vec![]));
     }
     fn path_changed(&self) -> bool {
         return self.path_changed;
@@ -60,11 +101,11 @@ impl Router_t {
     }
 }
 
-type LazyComponent = Box<dyn Fn() -> Component>;
+type LazyRouteComponent = Box<dyn Fn(RouteParams) -> Component>;
 
 pub struct ContainerRoute {
     name: String,
-    lazy_component: LazyComponent,
+    lazy_component: LazyRouteComponent,
     outlet_id: String,
     sub_routes: Vec<Route>,
     on_mount: Box<dyn Fn() -> ()>,
@@ -74,7 +115,7 @@ pub struct ContainerRoute {
 impl ContainerRoute {
     pub fn new(
         name: &str,
-        lazy_component: LazyComponent,
+        lazy_component: LazyRouteComponent,
         outlet_id: &str,
         sub_routes: Vec<Route>,
         on_mount: Box<dyn Fn() -> ()>,
@@ -93,7 +134,7 @@ impl ContainerRoute {
 
 pub struct LeafRoute {
     name: String,
-    lazy_component: LazyComponent,
+    lazy_component: LazyRouteComponent,
     on_mount: Box<dyn Fn() -> ()>,
     on_dismount: Box<dyn Fn() -> ()>,
 }
@@ -103,7 +144,7 @@ impl LeafRoute {
         name: &str,
         on_mount: Box<dyn Fn() -> ()>,
         on_dismount: Box<dyn Fn() -> ()>,
-        lazy_component: LazyComponent,
+        lazy_component: LazyRouteComponent,
     ) -> Self {
         return Self {
             name: name.into(),
@@ -125,7 +166,7 @@ impl Route {
         on_mount: Box<dyn Fn() -> ()>,
         on_dismount: Box<dyn Fn() -> ()>,
         outlet_id: &str,
-        lazy_component: LazyComponent,
+        lazy_component: LazyRouteComponent,
         sub_routes: Vec<Route>,
     ) -> Self {
         return Route::ContainerRoute(ContainerRoute::new(
@@ -141,7 +182,7 @@ impl Route {
         name: &str,
         on_mount: Box<dyn Fn() -> ()>,
         on_dismount: Box<dyn Fn() -> ()>,
-        lazy_component: LazyComponent,
+        lazy_component: LazyRouteComponent,
     ) -> Self {
         return Route::LeafRoute(LeafRoute::new(name, on_mount, on_dismount, lazy_component));
     }
@@ -165,7 +206,7 @@ impl Route {
     }
 }
 
-pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Component {
+pub fn build_route(path: Vec<String>, params: RouteParams, route: Route, path_changed: bool) -> Component {
     match route {
         Route::ContainerRoute(container_route) => {
             let mut path = path;
@@ -188,12 +229,12 @@ pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Compo
             };
             match next_route {
                 Some(r) => {
-                    let component = (container_route.lazy_component)();
+                    let component = (container_route.lazy_component)(params.clone());
                     let for_borrow = component.clone();
                     let component_binding = for_borrow.borrow_mut();
                     let outlet = component_binding.get_by_id(&container_route.outlet_id);
                     if let Some(outlet) = outlet {
-                        let child_component = build_route(remaining_path, r, path_changed);
+                        let child_component = build_route(remaining_path, params,r, path_changed);
                         outlet.borrow_mut().set_children(vec![child_component]);
                         return component;
                     } else {
@@ -205,7 +246,7 @@ pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Compo
                 }
             }
         }
-        Route::LeafRoute(leaf_route) => (leaf_route.lazy_component)(),
+        Route::LeafRoute(leaf_route) => (leaf_route.lazy_component)(params),
     }
 }
 
@@ -216,24 +257,24 @@ pub fn outlet(id: &str) -> Component {
         .build()
 }
 
-static ROUTER: OnceLock<RwLock<Router_t>> = OnceLock::new();
+static ROUTER: OnceLock<RwLock<RouterT>> = OnceLock::new();
 
 /// Thread-safe global router handle.
 pub struct Router;
 
 impl Router {
-    fn router() -> &'static RwLock<Router_t> {
+    fn router() -> &'static RwLock<RouterT> {
         ROUTER.get().expect("Router not initialized")
     }
 
     pub fn init(init_route: &str) {
         ROUTER
-            .set(RwLock::new(Router_t::new(init_route)))
+            .set(RwLock::new(RouterT::new(init_route)))
             .ok()
             .expect("Router already initialized");
     }
 
-    pub fn current_path() -> Vec<String> {
+    pub fn current_path() -> (Vec<String>,RouteParams) {
         Self::router().read().unwrap().current_path()
     }
 

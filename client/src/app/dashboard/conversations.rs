@@ -8,9 +8,15 @@ use ui::{
     raylib::color::Color,
 };
 
-use crate::{app::dashboard::conversations_store::ConversationsState, utils::router::Route};
+use crate::{app::dashboard::conversations_store::ConversationsState, utils::router::{Route, RouteParams}};
 
-fn conversation_layout() -> Component {
+fn conversation_layout(params:RouteParams) -> Component {
+    let conv_id = params.get("conversation_id");
+    if let Some(id_str) = conv_id {
+        if let Ok(id) = id_str.parse::<i32>() {
+            ConversationsState::set_selected_conversation_id(Some(id));
+        }
+    }
     Layout::get_row_builder()
         .bg_color(Color::BEIGE)
         .children(vec![conversations_list(), messages_section()])
@@ -128,6 +134,6 @@ pub fn conversations_route() -> Route {
         Box::new(|| {
             ConversationsState::de_init();
         }),
-        Box::new(|| conversation_layout()),
+        Box::new(|route_params| conversation_layout(route_params)),
     )
 }

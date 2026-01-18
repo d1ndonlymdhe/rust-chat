@@ -16,7 +16,7 @@ use crate::{
     UI_REBUILD_SIGNAL_SEND,
     utils::{
         fetch::{ClientModes, fetch,Response},
-        router::Route,
+        router::{Route,Router},
         state::as_state,
         text_input::{TextInputType, text_input},
     },
@@ -81,6 +81,7 @@ fn create_conversation_with_user(user_id: i32) {
                     serde_json::from_str::<Response<CreateConversationResponse>>(&text).unwrap();
                 if res_json.success {
                     let conversation_details = res_json.data.unwrap();
+                    Router::push(&format!("dashboard/conversations?conversation_id={}", conversation_details.conversation_id));
                     println!("Created conversation with ID: {}", conversation_details.conversation_id);
                     println!("Created conversation between users: {:?}", conversation_details.members.iter().map(|v|{v.username.clone()}).collect::<Vec<_>>());
                 } else {
@@ -251,6 +252,6 @@ pub fn search_route() -> Route {
         Box::new(|| {
             SearchState::de_init();
         }),
-        Box::new(|| search_layout()),
+        Box::new(|params| search_layout()),
     )
 }
