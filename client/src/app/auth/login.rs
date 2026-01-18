@@ -1,7 +1,7 @@
 use std::{
     thread,
 };
-use shared::{ResponseStruct, routes::auth::{login::{LoginRequest, LoginResponse}, refresh::RefreshResponse}};
+use shared::{routes::auth::{login::{LoginRequest, LoginResponse}, refresh::RefreshResponse}};
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -12,7 +12,7 @@ use ui::{
 };
 
 use crate::{UI_REBUILD_SIGNAL_SEND, app::auth::login_store::{LoginPageState, LoginState}, utils::{
-    fetch::{ClientModes, public_fetch}, popup::popup, router::{Route, Router}, session::Session, state::as_state, text_input::{TextInputType, text_input}
+    fetch::{ClientModes, public_fetch,Response}, popup::popup, router::{Route, Router}, session::Session, state::as_state, text_input::{TextInputType, text_input}
 }};
 
 
@@ -29,7 +29,7 @@ fn execute_login() {
         match res {
             Ok(body) => {
                 let body_text = body.text().unwrap();
-                let body_data = serde_json::from_str::<ResponseStruct<LoginResponse>>(&body_text).unwrap();
+                let body_data = serde_json::from_str::<Response<LoginResponse>>(&body_text).unwrap();
                 if body_data.success {
                     let LoginResponse {access_token,refresh_token} = body_data.data.unwrap();
                     Session::set_token(RefreshResponse{

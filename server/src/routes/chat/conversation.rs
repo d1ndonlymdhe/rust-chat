@@ -1,6 +1,6 @@
-use rocket::{State, serde::json::Json};
-use serde::{Deserialize, Serialize};
-use shared::{Response, routes::chat::conversation::{CreateConversationRequest, CreateConversationResponse}};
+use rocket::{State, serde::json::Json,get,post,error};
+use shared::{routes::chat::conversation::{CreateConversationRequest, CreateConversationResponse}};
+use crate::{lib::Response};
 use sqlx::PgPool;
 
 use crate::db::{auth::jwt::Claims, chat};
@@ -34,5 +34,14 @@ pub async fn create_conversation(
             }
         },
     }
+}
+
+#[get("/")]
+async fn get_conversations(
+    pool: &State<PgPool>,
+    claims: Claims,
+){
+    let Claims{user_id,..} = claims;
+    
 
 }

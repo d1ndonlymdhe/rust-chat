@@ -10,6 +10,7 @@ use crate::routes::{auth::{login::login, refresh::refresh, signup::signup}, chat
 
 mod routes;
 mod db;
+mod lib;
 
 #[get("/")]
 fn index() -> &'static str {

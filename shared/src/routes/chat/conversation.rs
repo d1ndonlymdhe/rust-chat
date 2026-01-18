@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-
-
+use crate::db::util::SqlJson;
 #[derive(Serialize,Deserialize)]
 pub struct CreateConversationRequest {
     pub participant_ids: Vec<i32>,
@@ -19,3 +18,15 @@ pub struct CreateConversationResponse {
     pub title: Option<String>,
     pub members: Vec<ConversationMember>,
 }
+
+#[derive(Serialize,Deserialize)]
+pub struct ConversationWithMembers {
+    pub id: i32,
+    pub title: Option<String>,
+    pub conv_type: String,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub members: SqlJson<Vec<ConversationMember>>,
+}
+
+pub type GetConversationResponse = Vec<ConversationWithMembers>;

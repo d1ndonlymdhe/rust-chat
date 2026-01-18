@@ -1,8 +1,8 @@
-use rocket::{State, serde::json::Json};
-use shared::{Response, routes::auth::refresh::{RefreshRequest, RefreshResponse}};
+use rocket::{State, post, serde::json::Json};
+use shared::{routes::auth::refresh::{RefreshRequest, RefreshResponse}};
 use sqlx::PgPool;
 
-use crate::db::auth::jwt::get_access_token_from_refresh;
+use crate::{lib::Response, db::auth::jwt::get_access_token_from_refresh};
 
 #[post("/refresh",data="<payload>")]
 pub async fn refresh(pool: &State<PgPool>, payload:Json<RefreshRequest>)->Response<RefreshResponse>{

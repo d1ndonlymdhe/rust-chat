@@ -1,5 +1,4 @@
 use shared::{
-    ResponseStruct,
     routes::auth::signup::{SignupRequest, SignupResponse},
 };
 use std::thread;
@@ -15,9 +14,8 @@ use ui::{
 use crate::{
     UI_REBUILD_SIGNAL_SEND,
     app::auth::signup_store::{SignupPageState, SignupState},
-    no_op,
     utils::{
-        fetch::{ClientModes, fetch, public_fetch},
+        fetch::{ClientModes, public_fetch,Response},
         popup::popup,
         router::{Route, Router},
         state::as_state,
@@ -39,7 +37,7 @@ fn execute_signup() {
             Ok(res) => {
                 let body = res.text().unwrap();
                 println!("Signup response body: {}", body);
-                let res = serde_json::from_str::<ResponseStruct<SignupResponse>>(&body).unwrap();
+                let res = serde_json::from_str::<Response<SignupResponse>>(&body).unwrap();
                 if res.success {
                     Router::push("auth/login");
                 } else {

@@ -1,8 +1,8 @@
-use rocket::State;
-use shared::{Response, routes::users::search::{SearchUser, SearchUserResult}};
+use rocket::{State, get};
+use shared::{routes::users::search::{SearchUser, SearchUserResult}};
 use sqlx::{PgPool};
 
-use crate::db::{auth::jwt::Claims, users::search};
+use crate::{lib::Response, db::{auth::jwt::Claims, users::search}};
 
 #[get("/search?<name>&<page>&<limit>")]
 pub async fn search_users(pool:&State<PgPool>,name:&str,page:i64,limit:i64,_claims: Claims)->Response<SearchUserResult>{

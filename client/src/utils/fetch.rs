@@ -1,5 +1,5 @@
 use reqwest::Error;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use shared::routes::auth::refresh::{RefreshRequest, RefreshResponse};
 
 use crate::utils::{router::Router, session::Session};
@@ -162,4 +162,11 @@ where
     Body: Serialize,
 {
     inner_fetch(method, path, body, 0)
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Response<T> {
+    pub success: bool,
+    pub message: String,
+    pub data: Option<T>,
 }

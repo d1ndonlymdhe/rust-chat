@@ -1,7 +1,7 @@
 use chrono::Utc;
 use macros::{any_cast, db_err, db_func};
 use rocket::{
-    Request, error, http::Status, outcome::Outcome, request::{self, FromRequest}
+    Request, async_trait, error, http::Status, outcome::Outcome, request::{self, FromRequest}
 };
 use serde::{Deserialize, Serialize};
 use shared::AnyErr;

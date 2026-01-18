@@ -1,7 +1,6 @@
 use std::thread;
 
 use shared::{
-    ResponseStruct,
     routes::{chat::conversation::{CreateConversationRequest, CreateConversationResponse}, users::search::{SearchQuery, SearchUserResult}},
 };
 use ui::{
@@ -16,7 +15,7 @@ use ui::{
 use crate::{
     UI_REBUILD_SIGNAL_SEND,
     utils::{
-        fetch::{ClientModes, fetch},
+        fetch::{ClientModes, fetch,Response},
         router::Route,
         state::as_state,
         text_input::{TextInputType, text_input},
@@ -45,7 +44,7 @@ fn execute_search() {
             Ok(response) => {
                 let text = response.text().unwrap();
                 let res_json =
-                    serde_json::from_str::<ResponseStruct<SearchUserResult>>(&text).unwrap();
+                    serde_json::from_str::<Response<SearchUserResult>>(&text).unwrap();
                 if res_json.success {
                     let result = res_json.data.unwrap();
                     println!("Search result text");
@@ -79,7 +78,7 @@ fn create_conversation_with_user(user_id: i32) {
             Ok(response) => {
                 let text = response.text().unwrap();
                 let res_json =
-                    serde_json::from_str::<ResponseStruct<CreateConversationResponse>>(&text).unwrap();
+                    serde_json::from_str::<Response<CreateConversationResponse>>(&text).unwrap();
                 if res_json.success {
                     let conversation_details = res_json.data.unwrap();
                     println!("Created conversation with ID: {}", conversation_details.conversation_id);
