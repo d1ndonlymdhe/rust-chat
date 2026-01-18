@@ -1,9 +1,8 @@
 use ui::{
     components::{
-        common::{Alignment, Component, Length},
+        common::{Component},
         layout::Layout,
     },
-    raylib::color::Color,
 };
 
 use crate::{

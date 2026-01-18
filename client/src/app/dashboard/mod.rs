@@ -16,6 +16,8 @@ use crate::{
 mod search;
 mod search_store;
 mod conversations;
+mod conversations_store;
+
 #[derive(Clone,Copy,PartialEq)]
 pub enum Menu {
     Conversations,

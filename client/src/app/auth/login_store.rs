@@ -10,8 +10,8 @@ pub struct LoginPageState {
 impl LoginPageState {
     fn new() -> Self {
         return Self {
-            username: "".into(),
-            password: "".into(),
+            username: "abcd".into(),
+            password: "abcd".into(),
             loading: false,
             error: None,
         };
@@ -36,7 +36,6 @@ pub struct LoginState;
 
 impl LoginState {
     pub fn init() {
-        println!("Initializing login state");
         match LOGIN_PAGE_STATE.get() {
             Some(v) => {
                 let has_state = {

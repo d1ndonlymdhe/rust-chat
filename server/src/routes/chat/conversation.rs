@@ -1,5 +1,5 @@
 use rocket::{State, serde::json::Json,get,post,error};
-use shared::{routes::chat::conversation::{CreateConversationRequest, CreateConversationResponse}};
+use shared::routes::chat::conversation::{CreateConversationRequest, CreateConversationResponse, GetConversationResponse};
 use crate::{lib::Response};
 use sqlx::PgPool;
 
@@ -37,11 +37,20 @@ pub async fn create_conversation(
 }
 
 #[get("/")]
-async fn get_conversations(
+pub async fn get_conversations(
     pool: &State<PgPool>,
     claims: Claims,
-){
+)->Response<GetConversationResponse>{
     let Claims{user_id,..} = claims;
-    
-
+    let conversations_result = chat::conversation::get_user_conversations(pool, user_id).await;
+    match conversations_result {
+        Ok(conversations) => {
+            return Response::success("Conversations fetched", conversations);
+        },
+        Err(e) => {
+            let e_string: String = e.to_string();
+            error!("Database error while fetching conversations: {}", e_string.clone());
+            return Response::internal_error(&e_string, None);
+        },
+    }
 }

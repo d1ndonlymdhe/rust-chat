@@ -6,7 +6,7 @@ pub struct CreateConversationRequest {
 }
 
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize,Deserialize,Clone)]
 pub struct ConversationMember {
     pub user_id: i32,
     pub username: String,
@@ -19,7 +19,7 @@ pub struct CreateConversationResponse {
     pub members: Vec<ConversationMember>,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize,Deserialize,Clone)]
 pub struct ConversationWithMembers {
     pub id: i32,
     pub title: Option<String>,
