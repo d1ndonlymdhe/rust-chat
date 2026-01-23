@@ -32,13 +32,13 @@ impl Session {
         (session.access_token.clone(), session.refresh_token.clone())
     }
 
-    pub fn set_access(token: Option<String>) {
-        Self::session().write().unwrap().access_token = token;
-    }
+    // pub fn set_access(token: Option<String>) {
+    //     Self::session().write().unwrap().access_token = token;
+    // }
 
-    pub fn set_refresh(token: Option<String>) {
-        Self::session().write().unwrap().refresh_token = token;
-    }
+    // pub fn set_refresh(token: Option<String>) {
+    //     Self::session().write().unwrap().refresh_token = token;
+    // }
 
     pub fn set_token(tokens: RefreshResponse) {
         let mut session = Self::session().write().unwrap();

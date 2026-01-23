@@ -8,7 +8,7 @@ use ui::{
     raylib::color::Color,
 };
 
-use crate::{app::dashboard::conversations_store::ConversationsState, utils::router::{Route, RouteParams}};
+use crate::{app::dashboard::conversations_store::ConversationsState, no_op, utils::router::{Route, RouteParams}};
 
 fn conversation_layout(params:RouteParams) -> Component {
     let conv_id = params.get("conversation_id");
@@ -131,9 +131,10 @@ pub fn conversations_route() -> Route {
         Box::new(|| {
             ConversationsState::init();
         }),
-        Box::new(|| {
-            ConversationsState::de_init();
-        }),
+        // Box::new(|| {
+        //     ConversationsState::de_init();
+        // }),
+        no_op(),
         Box::new(|route_params| conversation_layout(route_params)),
     )
 }

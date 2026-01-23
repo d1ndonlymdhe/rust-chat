@@ -1,9 +1,11 @@
-use std::{collections::HashMap, sync::{OnceLock, RwLock}};
+use std::{sync::{OnceLock, RwLock}};
 
 use ui::components::{
     common::{Component, Length},
     layout::Layout,
 };
+
+use crate::UI_REBUILD_SIGNAL_SEND;
 
 struct RouterT {
     current_path: String,
@@ -86,19 +88,19 @@ impl RouterT {
         self.current_path = new_path.into();
         self.path_changed = true;
     }
-    fn can_go_back(&self) -> bool {
-        return !self.path_stack.is_empty();
-    }
+    // fn can_go_back(&self) -> bool {
+    //     return !self.path_stack.is_empty();
+    // }
 
-    fn back(&mut self) {
-        self.current_path = match self.path_stack.last() {
-            Some(p) => {
-                self.path_changed = true;
-                p.clone()
-            }
-            None => panic!("Can't go back use can_go_back to determine"),
-        };
-    }
+    // fn back(&mut self) {
+    //     self.current_path = match self.path_stack.last() {
+    //         Some(p) => {
+    //             self.path_changed = true;
+    //             p.clone()
+    //         }
+    //         None => panic!("Can't go back use can_go_back to determine"),
+    //     };
+    // }
 }
 
 type LazyRouteComponent = Box<dyn Fn(RouteParams) -> Component>;
@@ -285,11 +287,16 @@ impl Router {
     pub fn reset_path_changed() {
         Self::router().write().unwrap().reset_path_changed();
     }
+    fn mark_path_changed(){
+        Self::router().write().unwrap().path_changed = true;
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    }
 
     pub fn push(new_path: &str) {
         if new_path == Self::router().read().unwrap().current_path {
             return;
         }
+        Self::mark_path_changed();
         Self::router().write().unwrap().push(new_path);
     }
 
@@ -297,11 +304,11 @@ impl Router {
         Self::router().write().unwrap().set(new_path);
     }
 
-    pub fn can_go_back() -> bool {
-        Self::router().read().unwrap().can_go_back()
-    }
+    // pub fn can_go_back() -> bool {
+    //     Self::router().read().unwrap().can_go_back()
+    // }
 
-    pub fn back() {
-        Self::router().write().unwrap().back();
-    }
+    // pub fn back() {
+    //     Self::router().write().unwrap().back();
+    // }
 }

@@ -3,9 +3,14 @@ use std::{
     thread,
 };
 
-use shared::routes::chat::conversation::{ConversationWithMembers, CreateConversationResponse, GetConversationResponse};
+use shared::routes::chat::conversation::{
+    ConversationWithMembers, GetConversationResponse,
+};
 
-use crate::{UI_REBUILD_SIGNAL_SEND, utils::fetch::{Response, fetch}};
+use crate::{
+    UI_REBUILD_SIGNAL_SEND,
+    utils::fetch::{Response, fetch},
+};
 
 pub struct ConversationPageState {
     pub conversations: Vec<ConversationWithMembers>,
@@ -51,6 +56,7 @@ impl ConversationsState {
                 if !has_state {
                     let mut state = v.write().unwrap();
                     state.replace(ConversationPageState::new());
+                    load_conversations();
                 }
             }
             None => {
@@ -58,19 +64,19 @@ impl ConversationsState {
                     .set(RwLock::new(Some(ConversationPageState::new())))
                     .ok()
                     .unwrap();
+                load_conversations();
             }
         };
-        load_conversations();
     }
-    pub fn de_init() {
-        match CONVERSATION_PAGE_STATE.get() {
-            Some(v) => {
-                let mut state = v.write().unwrap();
-                state.take();
-            }
-            None => {}
-        };
-    }
+    // pub fn de_init() {
+    //     match CONVERSATION_PAGE_STATE.get() {
+    //         Some(v) => {
+    //             let mut state = v.write().unwrap();
+    //             state.take();
+    //         }
+    //         None => {}
+    //     };
+    // }
     pub fn state() -> &'static RwLock<Option<ConversationPageState>> {
         return CONVERSATION_PAGE_STATE.get().unwrap();
     }
@@ -127,7 +133,11 @@ fn load_conversations() {
     }
     ConversationsState::set_loading(true);
     thread::spawn(|| {
-        let resp = fetch::<()>(crate::utils::fetch::ClientModes::GET, "/chat/conversation", &None);
+        let resp = fetch::<()>(
+            crate::utils::fetch::ClientModes::GET,
+            "/chat/conversation",
+            &None,
+        );
         let result = match resp {
             Ok(v) => v,
             Err(e) => {
@@ -138,12 +148,13 @@ fn load_conversations() {
         };
         let result_text = result.text().unwrap();
         println!("Fetched conversations: {}", result_text);
-        let conversations_try_json = serde_json::from_str::<Response<GetConversationResponse>>(&result_text);
+        let conversations_try_json =
+            serde_json::from_str::<Response<GetConversationResponse>>(&result_text);
         match conversations_try_json {
             Ok(conversations) => {
                 if !conversations.success {
                     ConversationsState::set_error(Some("Failed to fetch conversations".into()));
-                }else{
+                } else {
                     ConversationsState::set_conversations(conversations.data.unwrap());
                 }
             }

@@ -10,7 +10,7 @@ use ui::{
 };
 
 use crate::{
-    app::dashboard::{conversations::conversations_route, search::search_route}, no_op, utils::{router::{Route, Router, outlet}, session::Session}
+    app::dashboard::{conversations::conversations_route, search::search_route}, utils::{router::{Route, Router, outlet}}
 };
 
 mod search;
@@ -18,9 +18,11 @@ mod search_store;
 mod conversations;
 mod conversations_store;
 
-#[derive(Clone,Copy,PartialEq)]
+#[derive(Clone,PartialEq)]
 pub enum Menu {
-    Conversations,
+    Conversations{
+        conversation_id: Option<String>,
+    },
     Search
 }
 
@@ -42,14 +44,14 @@ impl DashboardState {
                 if !has_state {
                     let mut state = v.write().unwrap();
                     state.replace(DashboardStateT {
-                        active_menu: Menu::Conversations,
+                        active_menu: Menu::Conversations{conversation_id:None},
                     });
                 }
             }
             None => {
                 DASHBOARD_STATE
                     .set(RwLock::new(Some(DashboardStateT {
-                        active_menu: Menu::Conversations,
+                        active_menu: Menu::Conversations{conversation_id: None},
                     })))
                     .ok()
                     .unwrap();
@@ -72,9 +74,25 @@ impl DashboardState {
         let state_lock = DashboardState::state();
         let state = state_lock.read().unwrap();
         let s = state.as_ref().unwrap();
-        return s.active_menu;
+        return s.active_menu.clone();
     }
     pub fn set_menu(new_menu: Menu) {
+
+        let new_path = match &new_menu {
+            Menu::Conversations{conversation_id} => {
+                match conversation_id {
+                    Some(conversation_id) => {
+                        &format!("dashboard/conversations?conversation_id={}", conversation_id)
+                    },
+                    None => {
+                        "dashboard/conversations"
+                    },
+                }
+            },
+            Menu::Search => "dashboard/search",
+        };
+
+        Router::push(new_path);
         let state_lock = DashboardState::state();
         let mut state = state_lock.write().unwrap();
         let s = state.as_mut().unwrap();
@@ -92,7 +110,6 @@ fn dashboard() -> Component {
 }
 
 fn menu_bar() -> Component {
-
     let current_menu = DashboardState::menu();
 
     Layout::get_row_builder()
@@ -109,15 +126,14 @@ fn menu_bar() -> Component {
                 .main_align(Alignment::Center)
                 .font_size(18)
                 .bg_color({
-                    if current_menu == Menu::Conversations {
-                        Color::GRAY
-                    } else {
-                        Color::LIGHTGRAY
+                    match current_menu {
+                        Menu::Conversations { .. } => Color::GRAY,
+                        Menu::Search => Color::LIGHTGRAY,
                     }
                 })
                 .on_click(Box::new(|_|{
                     Router::push("dashboard/conversations");
-                    DashboardState::set_menu(Menu::Conversations);
+                    DashboardState::set_menu(Menu::Conversations{conversation_id: None});
                     false
                 }))
                 .padding((5,2,5,2))
@@ -137,7 +153,6 @@ fn menu_bar() -> Component {
                 })
                 .padding((5,2,5,2))
                 .on_click(Box::new(|_|{
-                    Router::push("dashboard/search");
                     DashboardState::set_menu(Menu::Search);
                     return
                     false
@@ -165,7 +180,7 @@ pub fn dashboard_route() -> Route {
             DashboardState::de_init();
         }),
         "dashboard_outlet",
-        Box::new(|route_params| dashboard()),
+        Box::new(|_| dashboard()),
         vec![search_route(),conversations_route()],
     )
 }

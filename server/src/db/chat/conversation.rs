@@ -1,8 +1,7 @@
 use macros::{db_err, db_func};
-use serde::{Deserialize, Serialize};
 use shared::AnyErr;
 use shared::{
-    db::signup::{IdOnly, User},
+    db::signup::{IdOnly},
     routes::chat::conversation::{ConversationMember, CreateConversationResponse, ConversationWithMembers},
 };
 use sqlx::types::Json;

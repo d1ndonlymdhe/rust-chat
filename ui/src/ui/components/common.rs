@@ -1,5 +1,5 @@
 use crate::raylib::prelude::*;
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Length {
@@ -202,9 +202,7 @@ pub fn get_draw_dim(
         Length::FIT => {
             let iter = children.iter().map(|child| {
                 let child = child.borrow();
-                let paddings = child.get_paddings();
                 let dims = child.get_draw_dim();
-                // dims.1 + paddings.1 + paddings.3
                 dims.1
             });
             match direction {
@@ -217,9 +215,7 @@ pub fn get_draw_dim(
         Length::FitPer(p) => {
             let iter = children.iter().map(|child| {
                 let child = child.borrow();
-                let paddings = child.get_paddings();
                 let dims = child.get_draw_dim();
-                // dims.1 + paddings.1 + paddings.3
                 dims.1
             });
             let fit_height = match direction {

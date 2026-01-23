@@ -13,13 +13,12 @@ use ui::{
 };
 
 use crate::{
-    UI_REBUILD_SIGNAL_SEND,
-    utils::{
-        fetch::{ClientModes, fetch,Response},
-        router::{Route,Router},
+    UI_REBUILD_SIGNAL_SEND, app::dashboard::{DashboardState, Menu}, utils::{
+        fetch::{ClientModes, Response, fetch},
+        router::{Route},
         state::as_state,
         text_input::{TextInputType, text_input},
-    },
+    }
 };
 
 use super::search_store::SearchState;
@@ -81,9 +80,7 @@ fn create_conversation_with_user(user_id: i32) {
                     serde_json::from_str::<Response<CreateConversationResponse>>(&text).unwrap();
                 if res_json.success {
                     let conversation_details = res_json.data.unwrap();
-                    Router::push(&format!("dashboard/conversations?conversation_id={}", conversation_details.conversation_id));
-                    println!("Created conversation with ID: {}", conversation_details.conversation_id);
-                    println!("Created conversation between users: {:?}", conversation_details.members.iter().map(|v|{v.username.clone()}).collect::<Vec<_>>());
+                    DashboardState::set_menu(Menu::Conversations { conversation_id: Some(conversation_details.conversation_id) });
                 } else {
                     SearchState::set_error(Some(res_json.message));
                 }
@@ -241,7 +238,6 @@ fn search_results_results() -> Component {
         })
         .build()
 }
-
 
 pub fn search_route() -> Route {
     Route::leaf(

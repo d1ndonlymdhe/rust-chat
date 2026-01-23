@@ -234,7 +234,6 @@ impl Base for TextLayout {
     }
 
     fn set_raw_dim(&mut self, parent_draw_dim: (i32, i32)) {
-        let layout_paddings = self.layout.padding;
 
         let layout = &mut self.layout;
         layout.children = vec![RawText::new(
@@ -247,16 +246,7 @@ impl Base for TextLayout {
         let content_width = unsafe {
             let c_text = CString::new(self.content.as_str()).unwrap();
             raylib::ffi::MeasureText(c_text.as_ptr(), self.font_size)
-            // + layout.padding.0
-            // + layout.padding.2
         };
-        let (mut draw_width, mut draw_height) = crate::components::common::get_draw_dim(
-            layout.dim,
-            parent_draw_dim,
-            &layout.children,
-            layout.direction,
-            layout.border_width,
-        );
 
         if self.wrap {
             let (draw_width,_draw_height) = get_draw_dim(layout.dim, parent_draw_dim, &layout.children, layout.direction, layout.border_width);

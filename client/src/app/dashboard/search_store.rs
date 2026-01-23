@@ -109,14 +109,4 @@ impl SearchState {
         state.error.clone()
     }
 
-    pub fn read_state() -> SearchPageState {
-        let state = Self::state().read().unwrap();
-        let state = state.as_ref().unwrap();
-        SearchPageState {
-            search_query: state.search_query.clone(),
-            results: state.results.clone(),
-            loading: state.loading,
-            error: state.error.clone(),
-        }
-    }
 }

@@ -99,16 +99,16 @@ impl SignupState {
         let state = state.as_ref().unwrap();
         state.password.clone()
     }
-    pub fn loading() -> bool {
-        let state = Self::state().read().unwrap();
-        let state = state.as_ref().unwrap();
-        state.loading
-    }
-    pub fn error() -> Option<String> {
-        let state = Self::state().read().unwrap();
-        let state = state.as_ref().unwrap();
-        state.error.clone()
-    }
+    // pub fn loading() -> bool {
+    //     let state = Self::state().read().unwrap();
+    //     let state = state.as_ref().unwrap();
+    //     state.loading
+    // }
+    // pub fn error() -> Option<String> {
+    //     let state = Self::state().read().unwrap();
+    //     let state = state.as_ref().unwrap();
+    //     state.error.clone()
+    // }
     pub fn read_state() -> SignupPageState {
         let state = Self::state().read().unwrap();
         let state = state.as_ref().unwrap();

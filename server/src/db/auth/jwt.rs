@@ -52,12 +52,12 @@ impl Claims {
     }
 }
 
-pub enum CompareRefreshError {
-    NotFound,
-    Expired,
-    Revoked,
-    Other,
-}
+// pub enum CompareRefreshError {
+//     NotFound,
+//     Expired,
+//     Revoked,
+//     Other,
+// }
 
 #[derive(Debug, PartialEq)]
 #[any_cast]

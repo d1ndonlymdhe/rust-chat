@@ -161,6 +161,6 @@ pub fn signup_route() -> Route {
         Box::new(|| {
             SignupState::de_init();
         }),
-        Box::new(|route_params| signup_page()),
+        Box::new(|_| signup_page()),
     );
 }
