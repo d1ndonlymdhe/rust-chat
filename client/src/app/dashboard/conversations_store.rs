@@ -8,8 +8,7 @@ use shared::routes::chat::conversation::{
 };
 
 use crate::{
-    UI_REBUILD_SIGNAL_SEND,
-    utils::fetch::{Response, fetch},
+    UI_REBUILD_SIGNAL_SEND, app::dashboard::{DashboardState}, utils::{fetch::{Response, fetch}}
 };
 
 pub struct ConversationPageState {
@@ -67,6 +66,23 @@ impl ConversationsState {
                 load_conversations();
             }
         };
+        let menu = DashboardState::menu();
+        match menu {
+            super::Menu::Conversations { conversation_id } => {
+                match conversation_id {
+                    Some(conversation_id) => {
+                        if let Ok(id) = conversation_id.parse::<i32>() {
+                            println!("Setting conversation id from route: {}", id);
+                            ConversationsState::set_selected_conversation_id(Some(id));
+                        } 
+                    },
+                    None => {
+                        ConversationsState::set_selected_conversation_id(None);
+                    },
+                }
+            },
+            super::Menu::Search => panic!("Opened Conversation Panel while in search state"),
+        }
     }
     // pub fn de_init() {
     //     match CONVERSATION_PAGE_STATE.get() {
@@ -147,7 +163,6 @@ fn load_conversations() {
             }
         };
         let result_text = result.text().unwrap();
-        println!("Fetched conversations: {}", result_text);
         let conversations_try_json =
             serde_json::from_str::<Response<GetConversationResponse>>(&result_text);
         match conversations_try_json {

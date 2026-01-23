@@ -36,7 +36,6 @@ fn execute_signup() {
         match res {
             Ok(res) => {
                 let body = res.text().unwrap();
-                println!("Signup response body: {}", body);
                 let res = serde_json::from_str::<Response<SignupResponse>>(&body).unwrap();
                 if res.success {
                     Router::push("auth/login");
@@ -161,6 +160,6 @@ pub fn signup_route() -> Route {
         Box::new(|| {
             SignupState::de_init();
         }),
-        Box::new(|_| signup_page()),
+        Box::new(|| signup_page()),
     );
 }

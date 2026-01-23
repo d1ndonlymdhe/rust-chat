@@ -180,7 +180,7 @@ pub fn dashboard_route() -> Route {
             DashboardState::de_init();
         }),
         "dashboard_outlet",
-        Box::new(|_| dashboard()),
+        Box::new(|| dashboard()),
         vec![search_route(),conversations_route()],
     )
 }

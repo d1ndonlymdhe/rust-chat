@@ -25,7 +25,7 @@ pub fn app_route() -> Route {
         no_op(),
         no_op(),
         "root_outlet",
-        Box::new(|_| app()),
+        Box::new(|| app()),
         vec![auth_route(), dashboard_route()],
     );
 }

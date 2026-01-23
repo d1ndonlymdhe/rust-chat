@@ -41,7 +41,6 @@ fn main() {
                 current_path
             };
             let path_changed = { Router::path_changed() };
-            println!("Current path: {:#?}", path.clone());
             let c = build_route(path,params, r, path_changed);
             Router::reset_path_changed();
             c

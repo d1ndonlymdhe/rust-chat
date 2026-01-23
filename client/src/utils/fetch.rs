@@ -83,26 +83,22 @@ fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
                                 Ok(())
                             }
                             Err(e) => {
-                                println!("Error parsing json {}", e.to_string());
                                 Err(())
                             }
                         },
                         Err(err) => {
-                            println!("Invalid Response from the server {}", err.to_string());
                             Router::set("auth/login");
                             Err(())
                         }
                     }
                 }
                 Err(e) => {
-                    println!("Error occurred while attempting refresh {}", e.to_string());
                     Router::set("auth/login");
                     Err(())
                 }
             }
         }
         None => {
-            println!("No refresh token found navigate to login");
             Router::set("auth/login");
             Err(())
         }
@@ -124,14 +120,12 @@ where
 
     let res = client.send()?;
     if res.status().as_u16() == 401 {
-        println!("UNAUTHORIZED ATTEMPTING REFRESH");
         if attempt < 3 {
             match refresh_the_token(refresh_token) {
                 Ok(_) => inner_fetch(method, path, body, attempt + 1),
                 Err(_) => Err(NetErr::Refresh),
             }
         } else {
-            println!("Max retries reached for refresh");
             Err(NetErr::Refresh)
         }
     } else {

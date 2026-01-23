@@ -46,8 +46,6 @@ fn execute_search() {
                     serde_json::from_str::<Response<SearchUserResult>>(&text).unwrap();
                 if res_json.success {
                     let result = res_json.data.unwrap();
-                    println!("Search result text");
-                    println!("{text}");
                     SearchState::set_results(result.result);
                 } else {
                     SearchState::set_results(vec![]);
@@ -248,6 +246,6 @@ pub fn search_route() -> Route {
         Box::new(|| {
             SearchState::de_init();
         }),
-        Box::new(|params| search_layout()),
+        Box::new(|| search_layout()),
     )
 }

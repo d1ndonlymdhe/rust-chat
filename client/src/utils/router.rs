@@ -103,7 +103,7 @@ impl RouterT {
     // }
 }
 
-type LazyRouteComponent = Box<dyn Fn(RouteParams) -> Component>;
+type LazyRouteComponent = Box<dyn Fn() -> Component>;
 
 pub struct ContainerRoute {
     name: String,
@@ -208,7 +208,7 @@ impl Route {
     }
 }
 
-pub fn build_route(path: Vec<String>, params: RouteParams, route: Route, path_changed: bool) -> Component {
+pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Component {
     match route {
         Route::ContainerRoute(container_route) => {
             let mut path = path;
@@ -220,6 +220,7 @@ pub fn build_route(path: Vec<String>, params: RouteParams, route: Route, path_ch
                     if &route.name() == next_path {
                         // route.on_mount();
                         if path_changed {
+                            println!("Running mount fn for route: {}", route.name());
                             route.on_mount();
                         }
                         ret_route = Some(route);
@@ -231,12 +232,12 @@ pub fn build_route(path: Vec<String>, params: RouteParams, route: Route, path_ch
             };
             match next_route {
                 Some(r) => {
-                    let component = (container_route.lazy_component)(params.clone());
+                    let component = (container_route.lazy_component)();
                     let for_borrow = component.clone();
                     let component_binding = for_borrow.borrow_mut();
                     let outlet = component_binding.get_by_id(&container_route.outlet_id);
                     if let Some(outlet) = outlet {
-                        let child_component = build_route(remaining_path, params,r, path_changed);
+                        let child_component = build_route(remaining_path,r, path_changed);
                         outlet.borrow_mut().set_children(vec![child_component]);
                         return component;
                     } else {
@@ -248,7 +249,7 @@ pub fn build_route(path: Vec<String>, params: RouteParams, route: Route, path_ch
                 }
             }
         }
-        Route::LeafRoute(leaf_route) => (leaf_route.lazy_component)(params),
+        Route::LeafRoute(leaf_route) => (leaf_route.lazy_component)(),
     }
 }
 

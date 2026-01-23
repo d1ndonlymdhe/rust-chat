@@ -157,6 +157,6 @@ pub fn login_route() -> Route {
         Box::new(|| {
             LoginState::de_init();
         }),
-        Box::new(|_| login_page()),
+        Box::new(|| login_page()),
     );
 }
