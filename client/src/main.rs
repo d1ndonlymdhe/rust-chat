@@ -36,12 +36,12 @@ fn main() {
     UIRoot::start(
         Box::new(move || {
             let r = app_route();
-            let (path,params) = {
+            let (path,_) = {
                 let current_path = Router::current_path();
                 current_path
             };
             let path_changed = { Router::path_changed() };
-            let c = build_route(path,params, r, path_changed);
+            let c = build_route(path, r, path_changed);
             Router::reset_path_changed();
             c
         }),
