@@ -7,5 +7,6 @@ edition = "2024"
 reqwest = {version = "0.12.28", features = ["blocking"]}
 serde = "1.0.228"
 serde_json = "1.0.148"
+chrono = { version = "0.4.42", features = ["serde"] }
 ui = { path = "../ui" }
 shared = { path = "../shared" }

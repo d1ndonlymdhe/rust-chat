@@ -6,7 +6,7 @@ use std::{env, str::FromStr};
 use dotenvy::dotenv;
 use sqlx::{PgPool, postgres::PgConnectOptions};
 
-use crate::routes::{auth::{login::login, refresh::refresh, signup::signup}, chat::{conversation::{create_conversation, get_conversations}, message::{get_messages_for_conversation, send_text_message}}, users::search::search_users};
+use crate::routes::{auth::{login::login, refresh::refresh, signup::signup}, chat::{conversation::{create_conversation, get_conversations}, message::{get_messages_for_conversation, send_text_message}}, users::search::{search_me, search_users}};
 
 mod routes;
 mod db;
@@ -32,6 +32,6 @@ async fn rocket() -> _ {
     .manage(pool)
     .mount("/", routes![index])
     .mount("/auth", routes![signup,login,refresh])
-    .mount("/users",routes![search_users])
+    .mount("/users",routes![search_users,search_me])
     .mount("/chat/conversation", routes![create_conversation,get_conversations,send_text_message,get_messages_for_conversation])
 }

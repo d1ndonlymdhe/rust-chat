@@ -13,7 +13,7 @@ pub async fn get_messages_for_conversation(
         SELECT
             m.id,
             m.conversation_id,
-            m.sender_member_id,
+            m.sender_user_id,
             m.message_type,
             m.message_content_id,
             tmc.text as content,
@@ -37,7 +37,7 @@ pub async fn get_messages_for_conversation(
 #[db_func]
 pub async fn add_text_message(
     conversation_id: i32,
-    sender_member_id: i32,
+    sender_user_id: i32,
     text: &str,
 ) -> Result<Message, sqlx::Error> {
     let mut txn = pool.begin().await?;
@@ -50,17 +50,17 @@ pub async fn add_text_message(
 
     let msg = query_as!(RawDbMessage,"
     INSERT INTO
-    message (conversation_id, sender_member_id, message_type, message_content_id)
+    message (conversation_id, sender_user_id, message_type, message_content_id)
     values ($1, $2, 'text', $3)
     RETURNING
         id,
         conversation_id,
-        sender_member_id,
+        sender_user_id,
         message_type,
         message_content_id,
         created_at,
         updated_at
-    ", conversation_id, sender_member_id, tmc_id.id).fetch_one(&mut *txn).await?;
+    ", conversation_id, sender_user_id, tmc_id.id).fetch_one(&mut *txn).await?;
     
     Ok(Message{
         content: text.to_string(),

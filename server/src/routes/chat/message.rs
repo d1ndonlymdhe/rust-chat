@@ -1,5 +1,5 @@
 use rocket::{State, serde::json::Json};
-use shared::routes::chat::message::{Message, SendTextMessagePayload};
+use shared::routes::chat::message::{GetMessagesForConversationResponse, Message, SendTextMessagePayload};
 
 use crate::{db::{auth::jwt::Claims, chat::message::add_text_message}, lib::Response};
 
@@ -32,7 +32,7 @@ pub async fn get_messages_for_conversation(
     pool: &State<sqlx::PgPool>,
     conversation_id: i32,
     claims: Claims,
-) -> Response<Vec<Message>> {
+) -> Response<GetMessagesForConversationResponse> {
     
     let messages_result = crate::db::chat::message::get_messages_for_conversation(
         pool,

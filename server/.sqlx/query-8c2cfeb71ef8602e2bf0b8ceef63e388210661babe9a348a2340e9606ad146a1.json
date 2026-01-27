@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id,username,hash_password,created_at,updated_at  from users where username LIKE $1 LIMIT $2 OFFSET $3",
+  "query": "SELECT id,username,hash_password,created_at,updated_at from users where id = $1",
   "describe": {
     "columns": [
       {
@@ -31,9 +31,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Int8",
-        "Int8"
+        "Int4"
       ]
     },
     "nullable": [
@@ -44,5 +42,5 @@
       false
     ]
   },
-  "hash": "6e4c419527ea61f52f2fac96bf6b0048d3f84a39610facc88e5783dc5061af7f"
+  "hash": "8c2cfeb71ef8602e2bf0b8ceef63e388210661babe9a348a2340e9606ad146a1"
 }

@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            m.id,\n            m.conversation_id,\n            m.sender_user_id,\n            m.message_type,\n            m.message_content_id,\n            tmc.text as content,\n            m.created_at,\n            m.updated_at \n        FROM message m\n        INNER JOIN conversation c\n        ON m.conversation_id = c.id\n        INNER JOIN text_message_content tmc\n        on m.message_content_id = tmc.id\n        INNER JOIN conversation_member cm\n        ON c.id = cm.conversation_id\n        WHERE cm.user_id = $1 AND\n        c.id = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "conversation_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "sender_user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "message_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "message_content_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 5,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d3c79d76c2f9ba5f05eb5ce8af6607b12a1066e015fac8c32a49706d9a8f63ab"
+}

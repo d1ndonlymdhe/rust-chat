@@ -1,5 +1,9 @@
-use std::sync::{OnceLock, RwLock};
+use std::{
+    sync::{OnceLock, RwLock},
+    thread,
+};
 
+use shared::routes::users::search::SearchUser;
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -10,26 +14,65 @@ use ui::{
 };
 
 use crate::{
-    app::dashboard::{conversations::conversations_route, search::search_route}, utils::{router::{Route, Router, outlet}}
+    app::dashboard::{conversations::conversations_route, search::search_route},
+    utils::{
+        fetch::{ClientModes, Response, fetch},
+        router::{Route, Router, outlet},
+        session::Session,
+    },
 };
 
-mod search;
-mod search_store;
+mod chat_window;
 mod conversations;
 mod conversations_store;
-
-#[derive(Clone,PartialEq)]
+mod search;
+mod search_store;
+#[derive(Clone, PartialEq)]
 pub enum Menu {
-    Conversations{
-        conversation_id: Option<String>,
-    },
-    Search
+    Conversations { conversation_id: Option<String> },
+    Search,
 }
 
 struct DashboardStateT {
     active_menu: Menu,
 }
 
+fn load_self() {
+    println!("Loading self details...");
+    let self_loaded = Session::self_loaded();
+    let self_loading = Session::self_loading();
+    if self_loaded || self_loading {
+        return;
+    }
+    thread::spawn(|| {
+        Session::set_self_loading(true);
+        let resp = fetch::<()>(ClientModes::GET, "/users/me", &None);
+        match resp {
+            Ok(resp) => {
+                let as_text = resp.text().unwrap();
+                println!("Self details response: {}", as_text);
+                let res = serde_json::from_str::<Response<SearchUser>>(&as_text).unwrap();
+                if res.success {
+                    let user = res.data.unwrap();
+
+                    Session::set_self_details(user.id, user.username);
+                    Session::set_self_loaded(true);
+                } else {
+                    Session::set_self_loaded(false);
+                    Router::push("/auth/login");
+                }
+                Session::set_self_loading(false);
+            }
+            Err(e) => {
+                Session::set_self_loading(false);
+                Session::set_self_loaded(false);
+                let e_str: String = e.into();
+                println!("Error loading self details: {}", e_str);
+                Router::push("/auth/login");
+            }
+        }
+    });
+}
 
 static DASHBOARD_STATE: OnceLock<RwLock<Option<DashboardStateT>>> = OnceLock::new();
 pub struct DashboardState;
@@ -44,19 +87,24 @@ impl DashboardState {
                 if !has_state {
                     let mut state = v.write().unwrap();
                     state.replace(DashboardStateT {
-                        active_menu: Menu::Conversations{conversation_id:None},
+                        active_menu: Menu::Conversations {
+                            conversation_id: None,
+                        },
                     });
                 }
             }
             None => {
                 DASHBOARD_STATE
                     .set(RwLock::new(Some(DashboardStateT {
-                        active_menu: Menu::Conversations{conversation_id: None},
+                        active_menu: Menu::Conversations {
+                            conversation_id: None,
+                        },
                     })))
                     .ok()
                     .unwrap();
             }
         };
+        load_self();
     }
     pub fn de_init() {
         match DASHBOARD_STATE.get() {
@@ -77,17 +125,13 @@ impl DashboardState {
         return s.active_menu.clone();
     }
     pub fn set_menu(new_menu: Menu) {
-
         let new_path = match &new_menu {
-            Menu::Conversations{conversation_id} => {
-                match conversation_id {
-                    Some(conversation_id) => {
-                        &format!("dashboard/conversations?conversation_id={}", conversation_id)
-                    },
-                    None => {
-                        "dashboard/conversations"
-                    },
-                }
+            Menu::Conversations { conversation_id } => match conversation_id {
+                Some(conversation_id) => &format!(
+                    "dashboard/conversations?conversation_id={}",
+                    conversation_id
+                ),
+                None => "dashboard/conversations",
             },
             Menu::Search => "dashboard/search",
         };
@@ -100,13 +144,10 @@ impl DashboardState {
     }
 }
 
-
 fn dashboard() -> Component {
-    Layout::get_col_builder().
-    children(vec![
-        menu_bar(),
-        content_area()
-    ]).build()
+    Layout::get_col_builder()
+        .children(vec![menu_bar(), content_area()])
+        .build()
 }
 
 fn menu_bar() -> Component {
@@ -116,11 +157,11 @@ fn menu_bar() -> Component {
         .bg_color(Color::LIGHTGRAY)
         .dim((Length::FILL, Length::FILL))
         .flex(4.0)
-        .padding((5,5,5,5))
+        .padding((5, 5, 5, 5))
         .gap(5)
         .children(vec![
             TextLayout::get_builder()
-                .dim((Length::FIT,Length::FILL))
+                .dim((Length::FIT, Length::FILL))
                 .content("Conversations")
                 .dbg_name("DBG_LAYOUT")
                 .main_align(Alignment::Center)
@@ -131,16 +172,18 @@ fn menu_bar() -> Component {
                         Menu::Search => Color::LIGHTGRAY,
                     }
                 })
-                .on_click(Box::new(|_|{
+                .on_click(Box::new(|_| {
                     Router::push("dashboard/conversations");
-                    DashboardState::set_menu(Menu::Conversations{conversation_id: None});
+                    DashboardState::set_menu(Menu::Conversations {
+                        conversation_id: None,
+                    });
                     false
                 }))
-                .padding((5,2,5,2))
+                .padding((5, 2, 5, 2))
                 .font_size(24)
                 .build(),
             TextLayout::get_builder()
-                .dim((Length::FIT,Length::FILL))
+                .dim((Length::FIT, Length::FILL))
                 .main_align(Alignment::Center)
                 .content("Search")
                 .font_size(18)
@@ -151,11 +194,10 @@ fn menu_bar() -> Component {
                         Color::LIGHTGRAY
                     }
                 })
-                .padding((5,2,5,2))
-                .on_click(Box::new(|_|{
+                .padding((5, 2, 5, 2))
+                .on_click(Box::new(|_| {
                     DashboardState::set_menu(Menu::Search);
-                    return
-                    false
+                    return false;
                 }))
                 .font_size(24)
                 .build(),
@@ -164,7 +206,7 @@ fn menu_bar() -> Component {
 }
 fn content_area() -> Component {
     Layout::get_row_builder()
-    .flex(96.0)
+        .flex(96.0)
         .dim((Length::FILL, Length::FILL))
         .children(vec![outlet("dashboard_outlet")])
         .build()
@@ -173,14 +215,14 @@ fn content_area() -> Component {
 pub fn dashboard_route() -> Route {
     Route::container(
         "dashboard",
-        Box::new(||{
+        Box::new(|| {
             DashboardState::init();
         }),
-        Box::new(||{
+        Box::new(|| {
             DashboardState::de_init();
         }),
         "dashboard_outlet",
         Box::new(|| dashboard()),
-        vec![search_route(),conversations_route()],
+        vec![search_route(), conversations_route()],
     )
 }

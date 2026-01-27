@@ -1,4 +1,3 @@
-use shared::routes::chat::conversation::ConversationWithMembers;
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -8,7 +7,7 @@ use ui::{
     raylib::color::Color,
 };
 
-use crate::{app::dashboard::conversations_store::ConversationsState, no_op, utils::router::{Route}};
+use crate::{app::dashboard::{conversations_store::{ClientConversation, ConversationsState}, chat_window::chat_window}, no_op, utils::router::Route};
 
 fn conversation_layout() -> Component {
     Layout::get_row_builder()
@@ -21,7 +20,7 @@ fn conversations_list() -> Component {
     let conversations = ConversationsState::conversations();
     let loading = ConversationsState::loading();
     let error = ConversationsState::error();
-
+    let selected_conversation_id = ConversationsState::selected_conversation_id();
     Layout::get_col_builder()
         .dim((Length::FILL, Length::FILL))
         .bg_color(Color::LIGHTGRAY)
@@ -54,8 +53,8 @@ fn conversations_list() -> Component {
                 ]
             } else {
                 conversations
-                    .into_iter()
-                    .map(conversation_list_item)
+                    .iter()
+                    .map(|conv| conversation_list_item(&conv, selected_conversation_id))
                     .collect::<Vec<Component>>()
             }
         })
@@ -63,24 +62,30 @@ fn conversations_list() -> Component {
 }
 
 fn messages_section() -> Component {
-    Layout::get_col_builder()
-        .dim((Length::FILL, Length::FILL))
-        .bg_color(Color::WHITE)
-        .main_align(Alignment::Center)
-        .cross_align(Alignment::Center)
-        .flex(80.0)
-        .children(vec![
-            TextLayout::get_builder()
-                .content("Select a conversation to view messages")
-                .font_size(24)
-                .text_color(Color::GRAY)
-                .build(),
-        ])
-        .build()
+    let selected_conversation_id = ConversationsState::selected_conversation_id();
+    
+    match selected_conversation_id {
+        Some(conversation_id) => chat_window(conversation_id),
+        None => Layout::get_col_builder()
+            .dim((Length::FILL, Length::FILL))
+            .bg_color(Color::WHITE)
+            .main_align(Alignment::Center)
+            .cross_align(Alignment::Center)
+            .flex(80.0)
+            .children(vec![
+                TextLayout::get_builder()
+                    .content("Select a conversation to start")
+                    .font_size(24)
+                    .text_color(Color::GRAY)
+                    .build(),
+            ])
+            .build()
+    }
 }
 
-fn conversation_list_item(conversation: ConversationWithMembers) -> Component {
-    let selected_id = ConversationsState::selected_conversation_id();
+fn conversation_list_item(conversation: &ClientConversation, selected_id: Option<i32>) -> Component {
+    let conversation = &conversation.conversation;
+    let passed_conversation_id = conversation.id;
     let is_selected = selected_id == Some(conversation.id);
 
     let conversation_name = if conversation.title.is_none() {
@@ -104,7 +109,7 @@ fn conversation_list_item(conversation: ConversationWithMembers) -> Component {
         .cross_align(Alignment::Center)
         // .padding((10, 5, 10, 5))
         .on_click(Box::new(move |_| {
-            ConversationsState::set_selected_conversation_id(Some(conversation.id));
+            ConversationsState::set_selected_conversation_id(Some(passed_conversation_id));
             false
         }))
         .children(vec![

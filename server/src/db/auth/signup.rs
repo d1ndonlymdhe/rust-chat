@@ -18,6 +18,11 @@ async fn create_account(username:&str,password:&str) -> Result<IdOnly,sqlx::Erro
     return res;
 }
 
+#[db_func]
+pub async fn get_user_by_id(user_id:i32) -> Result<Option<User>,sqlx::Error> {
+    let res = sqlx::query_as!(User,r#"SELECT id,username,hash_password,created_at,updated_at from users where id = $1"#,user_id).fetch_optional(pool).await?;
+    return Ok(res);
+}
 
 #[db_err]
 pub enum SignupError{

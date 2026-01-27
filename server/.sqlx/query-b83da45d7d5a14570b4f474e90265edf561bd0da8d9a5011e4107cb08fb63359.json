@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO conversation (title) VALUES ($1) RETURNING id",
+  "query": "\n    INSERT INTO\n    text_message_content (text)\n    values ($1)\n    RETURNING id\n    ",
   "describe": {
     "columns": [
       {
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "983a7f8938eb1c2fa802579a44092f07dc3bd1b69183c9983c73e512565250b0"
+  "hash": "b83da45d7d5a14570b4f474e90265edf561bd0da8d9a5011e4107cb08fb63359"
 }
