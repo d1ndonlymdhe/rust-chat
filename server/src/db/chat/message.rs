@@ -62,6 +62,8 @@ pub async fn add_text_message(
         updated_at
     ", conversation_id, sender_user_id, tmc_id.id).fetch_one(&mut *txn).await?;
     
+    txn.commit().await?;
+
     Ok(Message{
         content: text.to_string(),
         ..msg.into()

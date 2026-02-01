@@ -17,7 +17,7 @@ use crate::{
 #[derive(Clone)]
 pub struct ClientMessage {
     pub id: i32,
-    pub sender_member_id: i32,
+    pub sender_user_id: i32,
     pub message_type: String,
     pub content: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -27,7 +27,7 @@ impl From<Message> for ClientMessage {
     fn from(msg: Message) -> Self {
         ClientMessage {
             id: msg.id,
-            sender_member_id: msg.sender_user_id,
+            sender_user_id: msg.sender_user_id,
             message_type: msg.message_type,
             content: msg.content,
             created_at: msg.created_at,
@@ -437,6 +437,11 @@ fn load_messages(conversation_id: i32) {
                     Ok(data) => {
                         if data.success {
                             let messages = data.data.unwrap();
+                            println!(
+                                "Loaded {} messages for conversation {}",
+                                messages.len(),
+                                conversation_id
+                            );
                             let client_messages = messages.into_iter().map(|m| m.into()).collect();
                             ConversationsState::set_messages(conversation_id, client_messages);
                             ConversationsState::set_messages_loaded(conversation_id, true);
@@ -463,5 +468,6 @@ fn load_messages(conversation_id: i32) {
                 ConversationsState::set_messages_loading(conversation_id, false);
             }
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     });
 }

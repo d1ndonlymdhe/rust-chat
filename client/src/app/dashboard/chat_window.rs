@@ -11,55 +11,84 @@ use ui::{
 };
 
 use crate::{
-    UI_REBUILD_SIGNAL_SEND, app::dashboard::conversations_store::ConversationsState, utils::{
-        fetch::{ClientModes, Response, fetch}, session::Session, state::as_state, text_input::{TextInputType, text_input}
-    }
+    UI_REBUILD_SIGNAL_SEND,
+    app::dashboard::conversations_store::ConversationsState,
+    utils::{
+        fetch::{ClientModes, Response, fetch},
+        session::Session,
+        state::as_state,
+        text_input::{TextInputType, text_input},
+    },
 };
 
 pub fn chat_window(conversation_id: i32) -> Component {
-    let messages = ConversationsState::messages(conversation_id);
-    let self_id = Session::get_user_id().expect("User id not set");
     Layout::get_col_builder()
         .flex(80.0)
-        .children({
-            let mut children: Vec<Component> = messages
-                .iter()
-                .map(|m| message_bubble(&m.content, m.sender_member_id == self_id))
-                .collect();
-            children.push(send_message_box());
-            children
-        })
+        .dim((Length::FILL, Length::FILL))
+        .main_align(Alignment::Center)
+        .children(vec![messages_section(conversation_id), send_message_box()])
         .build()
 }
 
-pub fn message_bubble(message: &str, is_sender: bool) -> Component {
-    let bg_color = if is_sender {
-        Color::LIGHTBLUE
-    } else {
-        Color::LIGHTGRAY
-    };
-    let alignment = if is_sender {
-        Alignment::End
-    } else {
-        Alignment::Start
-    };
-    Layout::get_row_builder()
-        .main_align(alignment)
+pub fn messages_section(conversation_id: i32) -> Component {
+    let messages = ConversationsState::messages(conversation_id);
+    let self_id = Session::get_user_id().expect("User id not set");
+    
+    let message_components: Vec<Component> = messages
+        .iter()
+        .enumerate()
+        .map(|(idx, m)| message_component(&m.content, m.sender_user_id == self_id, idx))
+        .collect();
+
+    Layout::get_col_builder()
+        .dbg_name("CHAT_AREA")
+        .children(vec![
+            Layout::get_col_builder()
+                .children(message_components)
+                .gap(2)
+                .build(),
+        ])
+        .flex(19.0)
+        .build()
+}
+
+fn message_component(content: &str, is_self: bool, idx: usize) -> Component {
+    Layout::get_col_builder()
         .children(vec![
             TextLayout::get_builder()
-                .content(message)
+                .content(content)
+                .font_size(20)
+                .bg_color(if is_self {
+                    Color::LIGHTGREEN
+                } else {
+                    Color::SLATEBLUE
+                })
+                .text_color(if is_self {
+                    Color::BLACK
+                } else {
+                    Color::WHITE
+                })
+                .cross_align(Alignment::Start)
+                .main_align(Alignment::Center)
+                .dim((Length::FIT, Length::FIT))
+                .dbg_name(&format!("MSG {}", idx))
+                .padding((5, 2, 5, 2))
                 .wrap(true)
-                .font_size(16)
-                .padding((10, 10, 10, 10))
-                .bg_color(bg_color)
-                .build() as Component,
+                .build(),
         ])
+        .dim((Length::FILL, Length::FIT))
+        .cross_align(if is_self {
+            Alignment::End
+        } else {
+            Alignment::Start
+        })
         .build()
 }
 
 pub fn send_message_box() -> Component {
     let draft_message = ConversationsState::message_draft();
-    let conversation_id = ConversationsState::selected_conversation_id().expect("No conversation selected");
+    let conversation_id =
+        ConversationsState::selected_conversation_id().expect("No conversation selected");
     let message_input = text_input(
         draft_message.clone(),
         as_state(move |new_message| {
@@ -68,43 +97,43 @@ pub fn send_message_box() -> Component {
         TextInputType::Text,
     );
 
+    let input_box = Layout::get_col_builder()
+        .flex(8.0)
+        .dim((Length::FILL, Length::FILL))
+        .children(vec![message_input])
+        .build();
+
+    let send_button = TextLayout::get_builder()
+        .content("Send")
+        .font_size(20)
+        .bg_color(Color::DARKGRAY)
+        .text_color(Color::WHITE)
+        .dim((Length::FILL, Length::FILL))
+        .main_align(Alignment::Center)
+        .cross_align(Alignment::Center)
+        .flex(2.0)
+        .on_click(Box::new(move |_| {
+            if !draft_message.trim().is_empty() {
+                send_message(draft_message.clone(), conversation_id);
+                ConversationsState::set_message_draft(String::new());
+            }
+            true
+        }))
+        .build();
+
     Layout::get_row_builder()
-        .bg_color(Color::BEIGE)
-        .padding((10, 10, 10, 10))
-        .gap(10)
-        .children(vec![
-            Layout::get_col_builder()
-                .flex(95.0)
-                .children(vec![message_input])
-                .build(),
-            TextLayout::get_builder()
-                .content("Send")
-                .font_size(16)
-                .flex(5.0)
-                .padding((10, 10, 10, 10))
-                .bg_color(Color::LIGHTGREEN)
-                .dim((Length::FIT, Length::FIT))
-                .on_click(Box::new(move |_| {
-                    send_message(
-                        draft_message.clone(),
-                        conversation_id,
-                    );
-                    ConversationsState::set_message_draft(String::new());
-                    false
-                }))
-                .build(),
-        ])
+        .children(vec![input_box, send_button])
+        .dim((Length::FILL, Length::FILL))
+        .flex(1.0)
         .build()
 }
 
-fn send_message(msg: String,conversation_id:i32){
+fn send_message(msg: String, conversation_id: i32) {
     thread::spawn(move || {
         let resp = fetch(
             ClientModes::POST,
-            &format!("/chat/conversation/{}/messages/send/text",conversation_id),
-            &Some(SendTextMessagePayload{
-                text: msg,
-            })
+            &format!("/chat/conversation/{}/messages/send/text", conversation_id),
+            &Some(SendTextMessagePayload { text: msg }),
         );
         match resp {
             Ok(r) => {
@@ -114,7 +143,10 @@ fn send_message(msg: String,conversation_id:i32){
                 match as_json {
                     Ok(msg) => {
                         if msg.success {
-                            ConversationsState::add_message(conversation_id, msg.data.expect("Empty message data").into());
+                            ConversationsState::add_message(
+                                conversation_id,
+                                msg.data.expect("Empty message data").into(),
+                            );
                         } else {
                             eprintln!("Failed to send message: {}", msg.message);
                         }

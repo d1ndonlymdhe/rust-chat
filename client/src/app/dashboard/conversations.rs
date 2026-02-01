@@ -69,7 +69,8 @@ fn messages_section() -> Component {
         None => Layout::get_col_builder()
             .dim((Length::FILL, Length::FILL))
             .bg_color(Color::WHITE)
-            .main_align(Alignment::Center)
+            .main_align(Alignment::End)
+            .gap(10)
             .cross_align(Alignment::Center)
             .flex(80.0)
             .children(vec![
