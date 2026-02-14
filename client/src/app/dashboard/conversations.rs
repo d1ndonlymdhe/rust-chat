@@ -7,7 +7,14 @@ use ui::{
     raylib::color::Color,
 };
 
-use crate::{app::dashboard::{conversations_store::{ClientConversation, ConversationsState}, chat_window::chat_window}, no_op, utils::router::Route};
+use crate::{
+    app::dashboard::{
+        chat_window::chat_window,
+        conversations_store::{ClientConversation, ConversationsState},
+    },
+    no_op,
+    utils::router::Route,
+};
 
 fn conversation_layout() -> Component {
     Layout::get_row_builder()
@@ -63,7 +70,7 @@ fn conversations_list() -> Component {
 
 fn messages_section() -> Component {
     let selected_conversation_id = ConversationsState::selected_conversation_id();
-    
+
     match selected_conversation_id {
         Some(conversation_id) => chat_window(conversation_id),
         None => Layout::get_col_builder()
@@ -80,11 +87,14 @@ fn messages_section() -> Component {
                     .text_color(Color::GRAY)
                     .build(),
             ])
-            .build()
+            .build(),
     }
 }
 
-fn conversation_list_item(conversation: &ClientConversation, selected_id: Option<i32>) -> Component {
+fn conversation_list_item(
+    conversation: &ClientConversation,
+    selected_id: Option<i32>,
+) -> Component {
     let conversation = &conversation.conversation;
     let passed_conversation_id = conversation.id;
     let is_selected = selected_id == Some(conversation.id);
