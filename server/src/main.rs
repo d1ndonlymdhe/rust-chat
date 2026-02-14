@@ -2,10 +2,9 @@
 extern crate rocket;
 
 use std::{env, str::FromStr};
-
+use rocket::tokio::sync::mpsc;
 use dotenvy::dotenv;
 use sqlx::{PgPool, postgres::PgConnectOptions};
-
 use crate::routes::{auth::{login::login, refresh::refresh, signup::signup}, chat::{conversation::{create_conversation, get_conversations}, message::{get_messages_for_conversation, send_text_message}}, users::search::{search_me, search_users}};
 
 mod routes;
@@ -15,6 +14,19 @@ mod lib;
 fn index() -> &'static str {
     return "Hello World";
 }
+
+pub struct ChatMessage {
+    content: String,
+    sender_user_id: String,
+    conversation_id: String,
+}
+
+pub struct ChatPeer {
+    id: String,
+    channel: mpsc::Sender<ChatMessage>,
+}
+
+
 #[launch]
 async fn rocket() -> _ {
     let _ = dotenv();
