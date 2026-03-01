@@ -115,6 +115,7 @@ fn search_bar() -> Component {
                         SearchState::set_search_query(new_query.into());
                     }),
                     TextInputType::Text,
+                    Some(execute_search)
                 )])
                 .flex(92.0)
                 .build(),

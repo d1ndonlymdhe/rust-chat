@@ -64,6 +64,7 @@ fn login_page() -> Component {
                 LoginState::set_username(new_email.into())
             }),
             TextInputType::Text,
+            None,
         )
     };
     let pass_box = {
@@ -74,6 +75,7 @@ fn login_page() -> Component {
                 LoginState::set_password(new_password.into());
             }),
             TextInputType::Password,
+            Some(execute_login)
         )
     };
 

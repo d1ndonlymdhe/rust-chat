@@ -67,6 +67,7 @@ fn signup_page() -> Component {
             username,
             as_state(move |new_email| SignupState::set_username(new_email.into())),
             TextInputType::Text,
+            None
         )
     };
     let pass_box = {
@@ -77,6 +78,7 @@ fn signup_page() -> Component {
                 SignupState::set_password(new_password.into());
             }),
             TextInputType::Password,
+            Some(execute_signup)
         )
     };
 

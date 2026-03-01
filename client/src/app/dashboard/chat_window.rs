@@ -47,6 +47,7 @@ pub fn messages_section(conversation_id: i32) -> Component {
                 .gap(2)
                 .build(),
         ])
+        .overflow_y(true)
         .flex(19.0)
         .build()
 }
@@ -71,6 +72,7 @@ fn message_component(content: &str, is_self: bool, idx: usize) -> Component {
                 .wrap(true)
                 .build(),
         ])
+        .overflow_y(false)
         .dim((Length::FILL, Length::FIT))
         .cross_align(if is_self {
             Alignment::End
@@ -90,8 +92,8 @@ pub fn send_message_box() -> Component {
             ConversationsState::set_message_draft(new_message.into());
         }),
         TextInputType::Text,
+        Some(send_message)
     );
-
     let input_box = Layout::get_col_builder()
         .flex(8.0)
         .dim((Length::FILL, Length::FILL))
@@ -109,8 +111,7 @@ pub fn send_message_box() -> Component {
         .flex(2.0)
         .on_click(Box::new(move |_| {
             if !draft_message.trim().is_empty() {
-                send_message(draft_message.clone(), conversation_id);
-                ConversationsState::set_message_draft(String::new());
+                send_message();
             }
             true
         }))
@@ -123,8 +124,15 @@ pub fn send_message_box() -> Component {
         .build()
 }
 
-fn send_message(msg: String, conversation_id: i32) {
+fn send_message() {
     thread::spawn(move || {
+        let msg = ConversationsState::message_draft();
+        ConversationsState::set_message_draft(String::new());
+        let conversation_id = ConversationsState::selected_conversation_id();
+        if conversation_id.is_none(){
+            return;
+        }
+        let conversation_id = conversation_id.unwrap();
         let resp = fetch(
             ClientModes::POST,
             &format!("/chat/conversation/{}/messages/send/text", conversation_id),
