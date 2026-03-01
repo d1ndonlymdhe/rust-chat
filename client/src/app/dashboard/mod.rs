@@ -3,7 +3,7 @@ use std::{
     thread,
 };
 
-use shared::routes::users::search::SearchUser;
+use shared::routes::{chat::message::ChatMessage, users::search::SearchUser};
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -14,7 +14,7 @@ use ui::{
 };
 
 use crate::{
-    app::dashboard::{conversations::conversations_route, search::search_route},
+    app::dashboard::{conversations::conversations_route, conversations_store::{ConversationsState}, search::search_route},
     utils::{
         fetch::{ClientModes, Response, fetch},
         router::{Route, Router, outlet},
@@ -35,6 +35,45 @@ pub enum Menu {
 
 struct DashboardStateT {
     active_menu: Menu,
+}
+
+fn start_polling() {
+    thread::spawn(|| {
+        loop {
+            if DashboardState::is_some() {
+
+                let resp = fetch::<()>(ClientModes::GET, "/chat/conversation/poll", &None);
+                match resp {
+                    Ok(resp) => {
+                        let body = resp.text().expect("ERROR READING POLL RESPONSE BODY");
+                        println!("Poll response body: {}", body.clone());
+                        let as_json = serde_json::from_str::<Response<ChatMessage>>(&body).expect("ERROR PARSING JSON POLL RESPONSE");
+                        if as_json.success {
+                            match as_json.data {
+                                Some(data) => {
+                                    let conversation_id = data.conversation_id;
+                                    ConversationsState::add_message(conversation_id, data.into());
+                                },
+                                None => {
+                                    continue;
+                                },
+                            }
+                        }else{
+                            continue;
+                        }
+
+                    }
+                    Err(e) => {
+                        let x: String = e.into();
+                        eprintln!("Error while polling: {}", x);
+                        continue;
+                    }
+                }
+            }else{
+                break;
+            }
+        }
+    });
 }
 
 fn load_self() {
@@ -105,6 +144,7 @@ impl DashboardState {
             }
         };
         load_self();
+        start_polling();
     }
     pub fn de_init() {
         match DASHBOARD_STATE.get() {
@@ -114,6 +154,15 @@ impl DashboardState {
             }
             None => {}
         };
+    }
+    pub fn is_some() -> bool {
+        match DASHBOARD_STATE.get() {
+            Some(v) => {
+                let state = v.read().unwrap();
+                state.is_some()
+            }
+            None => false,
+        }
     }
     fn state() -> &'static RwLock<Option<DashboardStateT>> {
         return DASHBOARD_STATE.get().unwrap();

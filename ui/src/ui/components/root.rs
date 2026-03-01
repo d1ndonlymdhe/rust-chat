@@ -4,12 +4,19 @@ use raylib::{
     ffi::{KeyboardKey, MouseButton},
     prelude::{RaylibDraw, RaylibDrawHandle},
 };
-use std::{collections::HashMap,sync::mpsc, vec};
+use std::{collections::HashMap, sync::mpsc, vec};
 
 pub struct UIRoot {}
 impl UIRoot {
-    pub fn start(builder: Box<dyn Fn() -> Component>, dim: (i32, i32), title: &str, rebuild_signal: mpsc::Receiver<()>) {
+    pub fn start(
+        builder: Box<dyn Fn() -> Component>,
+        dim: (i32, i32),
+        title: &str,
+        rebuild_signal: mpsc::Receiver<()>,
+    ) {
+        let mut dim = dim;
         let (mut rl, thread) = raylib::init()
+            .resizable()
             .height(dim.1)
             .width(dim.0)
             .title(title)
@@ -32,6 +39,14 @@ impl UIRoot {
 
             let ctrl_down = rl.is_key_down(KeyboardKey::KEY_LEFT_CONTROL)
                 || rl.is_key_down(KeyboardKey::KEY_RIGHT_CONTROL);
+
+            let window_resized = rl.is_window_resized();
+            
+            if window_resized {
+                let h = rl.get_screen_height();
+                let w = rl.get_screen_width();
+                dim = (w,h);
+            }
 
             let extern_signal = rebuild_signal.try_recv();
             let extern_signal = extern_signal.is_ok();
@@ -74,19 +89,18 @@ impl UIRoot {
                     scroll_event,
                 );
 
-
-                if a || b || c || extern_signal {
+                if a || b || c || window_resized || extern_signal {
                     should_rebuild_ui = true;
                 }
             }
             if should_rebuild_ui {
                 main_child = builder();
+
                 UIRoot::measure_dimensions(main_child.clone(), dim);
                 UIRoot::measure_positions(main_child.clone());
                 UIRoot::measure_overflows(main_child.clone(), dim, &mut scroll_map);
                 UIRoot::draw(&mut d, main_child.clone());
                 should_rebuild_ui = false;
-
             }
         }
     }

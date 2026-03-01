@@ -11,7 +11,6 @@ use ui::{
 };
 
 use crate::{
-    UI_REBUILD_SIGNAL_SEND,
     app::dashboard::conversations_store::ConversationsState,
     utils::{
         fetch::{ClientModes, Response, fetch},
@@ -33,7 +32,7 @@ pub fn chat_window(conversation_id: i32) -> Component {
 pub fn messages_section(conversation_id: i32) -> Component {
     let messages = ConversationsState::messages(conversation_id);
     let self_id = Session::get_user_id().expect("User id not set");
-    
+
     let message_components: Vec<Component> = messages
         .iter()
         .enumerate()
@@ -63,11 +62,7 @@ fn message_component(content: &str, is_self: bool, idx: usize) -> Component {
                 } else {
                     Color::SLATEBLUE
                 })
-                .text_color(if is_self {
-                    Color::BLACK
-                } else {
-                    Color::WHITE
-                })
+                .text_color(if is_self { Color::BLACK } else { Color::WHITE })
                 .cross_align(Alignment::Start)
                 .main_align(Alignment::Center)
                 .dim((Length::FIT, Length::FIT))
@@ -142,12 +137,7 @@ fn send_message(msg: String, conversation_id: i32) {
                 let as_json = serde_json::from_str::<Response<Message>>(&as_text);
                 match as_json {
                     Ok(msg) => {
-                        if msg.success {
-                            ConversationsState::add_message(
-                                conversation_id,
-                                msg.data.expect("Empty message data").into(),
-                            );
-                        } else {
+                        if !msg.success {
                             eprintln!("Failed to send message: {}", msg.message);
                         }
                     }
@@ -162,6 +152,5 @@ fn send_message(msg: String, conversation_id: i32) {
                 eprintln!("Failed to send message: {}", e);
             }
         }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     });
 }

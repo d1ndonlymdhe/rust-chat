@@ -82,17 +82,17 @@ fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
                                 Session::set_token(tokens);
                                 Ok(())
                             }
-                            Err(e) => {
+                            Err(_) => {
                                 Err(())
                             }
                         },
-                        Err(err) => {
+                        Err(_) => {
                             Router::set("auth/login");
                             Err(())
                         }
                     }
                 }
-                Err(e) => {
+                Err(_) => {
                     Router::set("auth/login");
                     Err(())
                 }

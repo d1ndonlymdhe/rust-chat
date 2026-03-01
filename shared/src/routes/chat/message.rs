@@ -43,3 +43,14 @@ pub struct SendTextMessagePayload {
 }
 
 pub type GetMessagesForConversationResponse = Vec<Message>;
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub msg_id: i32,
+    pub content: String,
+    pub message_type: String,
+    pub sender_user_id: i32,
+    pub conversation_id: i32,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}

@@ -5,7 +5,7 @@ use std::{
 
 use shared::routes::chat::{
     conversation::{ConversationWithMembers, GetConversationResponse},
-    message::{GetMessagesForConversationResponse, Message},
+    message::{ChatMessage, GetMessagesForConversationResponse, Message},
 };
 
 use crate::{
@@ -21,6 +21,18 @@ pub struct ClientMessage {
     pub message_type: String,
     pub content: String,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+impl From<ChatMessage> for ClientMessage {
+    fn from(value: ChatMessage) -> Self {
+        return Self {
+            id: value.msg_id,
+            sender_user_id: value.sender_user_id,
+            message_type: value.message_type,
+            content: value.content,
+            created_at: value.created_at,
+        };
+    }
 }
 
 impl From<Message> for ClientMessage {
@@ -98,6 +110,7 @@ impl ConversationPageState {
             conv.messages_loaded = true;
             conv.messages_loading = false;
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
     fn add_message(&mut self, conversation_id: i32, message: ClientMessage) {
         if let Some(conv) = self
@@ -105,8 +118,16 @@ impl ConversationPageState {
             .iter_mut()
             .find(|c| c.conversation.id == conversation_id)
         {
-            conv.messages.push(message);
+            if conv
+                .messages
+                .iter()
+                .find(|el| el.id == message.id)
+                .is_none()
+            {
+                conv.messages.push(message);
+            }
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
     fn set_messages_loading(&mut self, conversation_id: i32, loading: bool) {
         if let Some(conv) = self
@@ -116,6 +137,7 @@ impl ConversationPageState {
         {
             conv.messages_loading = loading;
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
     fn set_messages_loaded(&mut self, conversation_id: i32, loaded: bool) {
         if let Some(conv) = self
@@ -125,6 +147,7 @@ impl ConversationPageState {
         {
             conv.messages_loaded = loaded;
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
     fn clear_messages(&mut self, conversation_id: i32) {
         if let Some(conv) = self
@@ -136,6 +159,7 @@ impl ConversationPageState {
             conv.messages_loaded = false;
             conv.messages_loading = false;
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
     fn clear_messages_error(&mut self, conversation_id: i32) {
         if let Some(conv) = self
@@ -145,6 +169,7 @@ impl ConversationPageState {
         {
             conv.error = None;
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
     fn set_messages_error(&mut self, conversation_id: i32, error: String) {
         if let Some(conv) = self
@@ -154,6 +179,7 @@ impl ConversationPageState {
         {
             conv.error = Some(error);
         }
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
     fn message_draft(&self) -> String {
         self.message_draft.clone()
@@ -194,7 +220,6 @@ impl ConversationsState {
             super::Menu::Conversations { conversation_id } => match conversation_id {
                 Some(conversation_id) => {
                     if let Ok(id) = conversation_id.parse::<i32>() {
-                        println!("Setting conversation id from route: {}", id);
                         ConversationsState::set_selected_conversation_id(Some(id));
                     }
                 }
