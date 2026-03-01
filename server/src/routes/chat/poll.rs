@@ -12,6 +12,22 @@ use rocket::{
 use shared::routes::chat::message::ChatMessage;
 use sqlx::PgPool;
 
+
+
+struct PollGuard {
+    chat_state: ChatState,
+    conversation_ids: Vec<i32>,
+    user_id: i32,
+    channel_id: u32,
+}
+
+impl Drop for PollGuard {
+    fn drop(&mut self) {
+        let mut s = self.chat_state.lock().unwrap();
+        s.remove_channel(&self.conversation_ids, self.user_id, self.channel_id);
+    }
+}
+
 #[get("/poll")]
 pub async fn poll_for_chat_events(
     pool: &State<PgPool>,
@@ -42,12 +58,15 @@ pub async fn poll_for_chat_events(
             },
         );
     }
-    let received_message = timeout(Duration::from_secs(30), receiver.recv()).await;
 
-    {
-        let mut s = chat_state.lock().unwrap();
-        s.remove_channel(&conversation_ids, user_id, channel_id);
-    }
+    let _guard = PollGuard {
+        chat_state: chat_state.inner().clone(),
+        conversation_ids: conversation_ids,
+        user_id,
+        channel_id,
+    };
+
+    let received_message = timeout(Duration::from_secs(30), receiver.recv()).await;
 
     if received_message.is_err() {
         return Response::not_found("Timeout", None);
