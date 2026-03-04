@@ -2,6 +2,8 @@ use std::sync::{OnceLock, RwLock};
 
 use shared::routes::auth::refresh::RefreshResponse;
 
+use crate::utils::localstorage::LocalStorage;
+
 struct SessionT {
     access_token: Option<String>,
     refresh_token: Option<String>,
@@ -51,7 +53,17 @@ impl Session {
     pub fn set_token(tokens: RefreshResponse) {
         let mut session = Self::session().write().unwrap();
         session.access_token = Some(tokens.access_token);
-        session.refresh_token = Some(tokens.refresh_token);
+        session.refresh_token = Some(tokens.refresh_token.clone());
+        LocalStorage::set_value("token", &tokens.refresh_token);
+    }
+
+    pub fn set_access_token(token: String) {
+        let mut session = Self::session().write().unwrap();
+        session.access_token = Some(token);
+    }
+    pub fn set_refresh_token(token: String) {
+        let mut session = Self::session().write().unwrap();
+        session.refresh_token = Some(token);
     }
 
     pub fn set_self_details(user_id: i32, username: String) {
@@ -90,5 +102,4 @@ impl Session {
         let mut session = Self::session().write().unwrap();
         session.self_loaded = loaded;
     }
-
 }

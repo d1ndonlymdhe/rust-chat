@@ -1,4 +1,4 @@
-use std::{sync::{OnceLock, RwLock}};
+use std::sync::{Mutex, OnceLock, RwLock};
 
 use ui::components::{
     common::{Component, Length},
@@ -13,10 +13,8 @@ struct RouterT {
     path_changed: bool,
 }
 
-
-
 #[derive(Clone)]
-pub struct RouteParam{
+pub struct RouteParam {
     key: String,
     value: String,
 }
@@ -35,7 +33,11 @@ impl RouteParams {
 }
 
 impl RouterT {
-    fn current_path(&self) -> (Vec<String>,RouteParams) {
+    fn current_path(&mut self,reset:bool) -> (Vec<String>, RouteParams,bool) {
+        let was_changed = self.path_changed;
+        if reset {
+            self.path_changed = false;
+        }
         let mut path_vec: Vec<String> = self
             .current_path
             .split("/")
@@ -45,23 +47,23 @@ impl RouterT {
         let last_el = path_vec.last().cloned();
         if let Some(last_el) = last_el {
             let split_at_question = last_el.split_once("?");
-            if let Some((last_path_part,params_part)) = split_at_question {
+            if let Some((last_path_part, params_part)) = split_at_question {
                 let mut params_vec: Vec<RouteParam> = vec![];
                 for param_kv in params_part.split("&") {
                     let kv_split = param_kv.split_once("=");
-                    if let Some((k,v)) = kv_split {
-                        params_vec.push(RouteParam{
-                            key:k.into(),
-                            value:v.into(),
+                    if let Some((k, v)) = kv_split {
+                        params_vec.push(RouteParam {
+                            key: k.into(),
+                            value: v.into(),
                         });
                     }
                 }
                 path_vec.pop();
                 path_vec.push(last_path_part.into());
-                return (path_vec, RouteParams(params_vec));
+                return (path_vec, RouteParams(params_vec), was_changed);
             }
         }
-        return (path_vec, RouteParams(vec![]));
+        return (path_vec, RouteParams(vec![]), was_changed);
     }
     fn path_changed(&self) -> bool {
         return self.path_changed;
@@ -209,6 +211,7 @@ impl Route {
 }
 
 pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Component {
+    // println!("{:?}",path);
     match route {
         Route::ContainerRoute(container_route) => {
             let mut path = path;
@@ -237,7 +240,7 @@ pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Compo
                     let component_binding = for_borrow.borrow_mut();
                     let outlet = component_binding.get_by_id(&container_route.outlet_id);
                     if let Some(outlet) = outlet {
-                        let child_component = build_route(remaining_path,r, path_changed);
+                        let child_component = build_route(remaining_path, r, path_changed);
                         outlet.borrow_mut().set_children(vec![child_component]);
                         return component;
                     } else {
@@ -245,7 +248,10 @@ pub fn build_route(path: Vec<String>, route: Route, path_changed: bool) -> Compo
                     }
                 }
                 None => {
-                    panic!("NO MATCHING ROUTE FOUND {}", next_path);
+                    let component = (container_route.lazy_component)();
+                    (container_route.on_mount)();
+                    component
+                    // panic!("NO MATCHING ROUTE FOUND {}", next_path);
                 }
             }
         }
@@ -260,56 +266,76 @@ pub fn outlet(id: &str) -> Component {
         .build()
 }
 
-static ROUTER: OnceLock<RwLock<RouterT>> = OnceLock::new();
+static ROUTER: OnceLock<Mutex<RouterT>> = OnceLock::new();
 
 /// Thread-safe global router handle.
 pub struct Router;
 
 impl Router {
-    fn router() -> &'static RwLock<RouterT> {
+    fn router() -> &'static Mutex<RouterT> {
         ROUTER.get().expect("Router not initialized")
     }
 
     pub fn init(init_route: &str) {
         ROUTER
-            .set(RwLock::new(RouterT::new(init_route)))
+            .set(Mutex::new(RouterT::new(init_route)))
             .ok()
             .expect("Router already initialized");
     }
 
-    pub fn current_path() -> (Vec<String>,RouteParams) {
-        Self::router().read().unwrap().current_path()
+    pub fn current_path(reset: bool) -> (Vec<String>, RouteParams, bool) {
+        println!("[{:?}] Router::current_path(reset={}) LOCK acquiring", std::thread::current().id(), reset);
+        let result = Self::router().lock().unwrap().current_path(reset);
+        println!("[{:?}] Router::current_path => path={:?}, changed={} LOCK released", std::thread::current().id(), result.0, result.2);
+        result
     }
+
 
     pub fn path_changed() -> bool {
-        Self::router().read().unwrap().path_changed()
+        println!("[{:?}] Router::path_changed() LOCK acquiring", std::thread::current().id());
+        let v = Self::router().lock().unwrap().path_changed();
+        println!("[{:?}] Router::path_changed() => {} LOCK released", std::thread::current().id(), v);
+        v
     }
 
+
     pub fn reset_path_changed() {
-        Self::router().write().unwrap().reset_path_changed();
+        println!("[{:?}] Router::reset_path_changed() LOCK acquiring", std::thread::current().id());
+        Self::router().lock().unwrap().reset_path_changed();
+        println!("[{:?}] Router::reset_path_changed() LOCK released", std::thread::current().id());
     }
-    fn mark_path_changed(){
-        Self::router().write().unwrap().path_changed = true;
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    fn mark_path_changed() {
+        println!("[{:?}] Router::mark_path_changed() LOCK acquiring", std::thread::current().id());
+        Self::router().lock().unwrap().path_changed = true;
+        println!("[{:?}] Router::mark_path_changed() LOCK released", std::thread::current().id());
+        // UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
 
     pub fn push(new_path: &str) {
-        if new_path == Self::router().read().unwrap().current_path {
+        println!("[{:?}] Router::push({}) LOCK acquiring", std::thread::current().id(), new_path);
+        let mut router = Self::router().lock().unwrap();
+        if new_path == router.current_path {
+            println!("[{:?}] Router::push({}) same path, skipping LOCK released", std::thread::current().id(), new_path);
             return;
         }
-        Self::mark_path_changed();
-        Self::router().write().unwrap().push(new_path);
+        router.path_changed = true;
+        router.push(new_path);
+        println!("[{:?}] Router::push({}) done LOCK released changed = {}", std::thread::current().id(), new_path, router.path_changed);
     }
 
     pub fn set(new_path: &str) {
-        Self::router().write().unwrap().set(new_path);
+        println!("[{:?}] Router::set({}) START (2 locks!)", std::thread::current().id(), new_path);
+        Self::mark_path_changed();
+        println!("[{:?}] Router::set({}) LOCK #2 acquiring", std::thread::current().id(), new_path);
+        Self::router().lock().unwrap().set(new_path);
+        println!("[{:?}] Router::set({}) LOCK #2 released", std::thread::current().id(), new_path);
     }
 
     // pub fn can_go_back() -> bool {
-    //     Self::router().read().unwrap().can_go_back()
+    //     Self::router().lock().unwrap().can_go_back()
     // }
 
     // pub fn back() {
-    //     Self::router().write().unwrap().back();
+    //     Self::router().lock().unwrap().back();
     // }
 }

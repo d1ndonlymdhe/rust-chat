@@ -2,7 +2,7 @@ use reqwest::Error;
 use serde::{Deserialize, Serialize};
 use shared::routes::auth::refresh::{RefreshRequest, RefreshResponse};
 
-use crate::utils::{router::Router, session::Session};
+use crate::utils::{localstorage::LocalStorage, router::Router, session::Session};
 
 pub static BASE_URL: &str = "http://localhost:8000";
 
@@ -65,7 +65,7 @@ where
     }
 }
 
-fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
+pub fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
     match refresh_token {
         Some(refresh_token) => {
             let res = reqwest::blocking::Client::new()

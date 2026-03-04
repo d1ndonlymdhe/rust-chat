@@ -95,7 +95,7 @@ impl UIRoot {
             }
             if should_rebuild_ui {
                 main_child = builder();
-
+                println!("BUILDING");
                 UIRoot::measure_dimensions(main_child.clone(), dim);
                 UIRoot::measure_positions(main_child.clone());
                 UIRoot::measure_overflows(main_child.clone(), dim, &mut scroll_map);

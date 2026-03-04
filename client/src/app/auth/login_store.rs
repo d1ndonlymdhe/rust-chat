@@ -36,6 +36,7 @@ pub struct LoginState;
 
 impl LoginState {
     pub fn init() {
+        println!("INITIALIZING LOGIN STATE");
         match LOGIN_PAGE_STATE.get() {
             Some(v) => {
                 let has_state = {
@@ -67,7 +68,7 @@ impl LoginState {
     fn state() -> &'static RwLock<Option<LoginPageState>> {
         return LOGIN_PAGE_STATE
             .get()
-            .expect("Signup state not initialized");
+            .expect("Login state not initialized");
     }
     pub fn set_password(new_password: String) {
         let mut state = Self::state().write().unwrap();

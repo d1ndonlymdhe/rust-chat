@@ -1,14 +1,17 @@
-use ui::{
-    components::{
-        common::{Component},
-        layout::Layout,
-    },
-};
+use std::thread;
+
+use shared::routes::users::search::SearchUser;
+use ui::components::{common::Component, layout::Layout};
 
 use crate::{
     app::{auth::auth_route, dashboard::dashboard_route},
     no_op,
-    utils::router::{Route, outlet},
+    utils::{
+        fetch::{ClientModes, Response, fetch, refresh_the_token},
+        localstorage::LocalStorage,
+        router::{Route, Router, outlet},
+        session::Session,
+    },
 };
 
 mod auth;
@@ -19,10 +22,37 @@ fn app() -> Component {
         .build()
 }
 
+fn load_session() {
+    let token = LocalStorage::get_value("token");
+    if let Some(token) = token {
+        Session::set_refresh_token(token);
+    }
+}
+
+fn init() {
+    let token = LocalStorage::get_value("token");
+    if let Some(token) = token {
+        println!("TOKEN = {}",token);
+        thread::spawn(move || {
+            println!("REFRESHING TOKEN");
+            if let Ok(_) = refresh_the_token(Some(token)) {
+                println!("REFRESH SUCCESS");
+                Router::push("dashboard/conversations");
+            } else {
+                println!("REFRESH FAIL");
+                Router::push("auth/login");
+            };
+        });
+    } else {
+        println!("NO TOKEN FOUND");
+        Router::push("auth/login");
+    }
+}
+
 pub fn app_route() -> Route {
     return Route::container(
         "root",
-        no_op(),
+        Box::new(|| init()),
         no_op(),
         "root_outlet",
         Box::new(|| app()),

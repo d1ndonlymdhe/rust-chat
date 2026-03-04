@@ -17,6 +17,7 @@ mod utils;
 
 extern crate ui;
 
+
 pub static UI_REBUILD_SIGNAL_SEND: OnceLock<Sender<()>> = OnceLock::new();
 
 fn init_channel() -> Receiver<()> {
@@ -32,17 +33,20 @@ fn no_op() -> Box<dyn Fn() -> ()> {
 fn main() {
     let ui_rebuild_signal_recv = init_channel();
     Session::init();
-    Router::init("auth/login");
+    Router::init("root");
+    // Router::init("auth/signup");
     UIRoot::start(
         Box::new(move || {
             let r = app_route();
-            let (path,_) = {
-                let current_path = Router::current_path();
+            println!("[{:?}] UI rebuild: about to read path", std::thread::current().id());
+            let (path,_,path_changed) = {
+                let current_path = Router::current_path(true);
                 current_path
             };
-            let path_changed = { Router::path_changed() };
+            println!("[{:?}] UI rebuild: path={:?} changed={}", std::thread::current().id(), path, path_changed);
             let c = build_route(path, r, path_changed);
-            Router::reset_path_changed();
+            println!("[{:?}] UI rebuild: build_route done", std::thread::current().id());
+            // Router::reset_path_changed();
             c
         }),
         (1920, 1000),
@@ -50,3 +54,5 @@ fn main() {
         ui_rebuild_signal_recv,
     );
 }
+
+

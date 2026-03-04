@@ -3,7 +3,7 @@ use std::{
     thread,
 };
 
-use shared::routes::{chat::message::ChatMessage, users::search::SearchUser};
+use shared::routes::{auth::refresh::RefreshResponse, chat::message::ChatMessage, users::search::SearchUser};
 use ui::{
     components::{
         common::{Alignment, Component, Length},
@@ -14,11 +14,9 @@ use ui::{
 };
 
 use crate::{
-    app::dashboard::{conversations::conversations_route, conversations_store::{ConversationsState}, search::search_route},
+    app::dashboard::{conversations::conversations_route, conversations_store::ConversationsState, search::search_route},
     utils::{
-        fetch::{ClientModes, Response, fetch},
-        router::{Route, Router, outlet},
-        session::Session,
+        fetch::{ClientModes, Response, fetch}, localstorage::LocalStorage, router::{Route, Router, outlet}, session::Session
     },
 };
 
@@ -37,47 +35,7 @@ struct DashboardStateT {
     active_menu: Menu,
 }
 
-fn start_polling() {
-    thread::spawn(|| {
-        loop {
-            if DashboardState::is_some() {
-
-                let resp = fetch::<()>(ClientModes::GET, "/chat/conversation/poll", &None);
-                match resp {
-                    Ok(resp) => {
-                        let body = resp.text().expect("ERROR READING POLL RESPONSE BODY");
-                        println!("Poll response body: {}", body.clone());
-                        let as_json = serde_json::from_str::<Response<ChatMessage>>(&body).expect("ERROR PARSING JSON POLL RESPONSE");
-                        if as_json.success {
-                            match as_json.data {
-                                Some(data) => {
-                                    let conversation_id = data.conversation_id;
-                                    ConversationsState::add_message(conversation_id, data.into());
-                                },
-                                None => {
-                                    continue;
-                                },
-                            }
-                        }else{
-                            continue;
-                        }
-
-                    }
-                    Err(e) => {
-                        let x: String = e.into();
-                        eprintln!("Error while polling: {}", x);
-                        continue;
-                    }
-                }
-            }else{
-                break;
-            }
-        }
-    });
-}
-
 fn load_self() {
-    println!("Loading self details...");
     let self_loaded = Session::self_loaded();
     let self_loading = Session::self_loading();
     if self_loaded || self_loading {
@@ -89,7 +47,6 @@ fn load_self() {
         match resp {
             Ok(resp) => {
                 let as_text = resp.text().unwrap();
-                println!("Self details response: {}", as_text);
                 let res = serde_json::from_str::<Response<SearchUser>>(&as_text).unwrap();
                 if res.success {
                     let user = res.data.unwrap();
@@ -98,7 +55,7 @@ fn load_self() {
                     Session::set_self_loaded(true);
                 } else {
                     Session::set_self_loaded(false);
-                    Router::push("/auth/login");
+                    Router::push("auth/login");
                 }
                 Session::set_self_loading(false);
             }
@@ -107,7 +64,7 @@ fn load_self() {
                 Session::set_self_loaded(false);
                 let e_str: String = e.into();
                 println!("Error loading self details: {}", e_str);
-                Router::push("/auth/login");
+                Router::push("auth/login");
             }
         }
     });
@@ -144,7 +101,6 @@ impl DashboardState {
             }
         };
         load_self();
-        start_polling();
     }
     pub fn de_init() {
         match DASHBOARD_STATE.get() {
