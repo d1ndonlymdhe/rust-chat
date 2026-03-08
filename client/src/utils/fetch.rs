@@ -69,7 +69,7 @@ pub fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
     match refresh_token {
         Some(refresh_token) => {
             let res = reqwest::blocking::Client::new()
-                .post(format!("{BASE_URL}/refresh"))
+                .post(format!("{BASE_URL}/auth/refresh"))
                 .body(serde_json::to_string(&RefreshRequest { refresh_token }).unwrap())
                 .send();
 
@@ -77,28 +77,40 @@ pub fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
                 Ok(res) => {
                     let body = res.text();
                     match body {
-                        Ok(body) => match serde_json::from_str::<RefreshResponse>(&body) {
-                            Ok(tokens) => {
-                                Session::set_token(tokens);
-                                Ok(())
+                        Ok(body) => match serde_json::from_str::<Response<RefreshResponse>>(&body) {
+                            Ok(body) => {
+                                if body.success{
+                                    println!("REFRESH SUCCESS INNER");
+                                    Session::set_token(body.data.unwrap());
+                                    Ok(())
+                                }else{
+                                    println!("REFRESH FAIL INNER {}",body.message);
+                                    Err(())
+                                }
                             }
-                            Err(_) => {
+                            Err(err) => {
+                                println!("REFRESH FAIL INNER: {}", err);
                                 Err(())
                             }
                         },
-                        Err(_) => {
+                        Err(err) => {
+                            println!("REFRESH FAIL INNER: {}", err);
                             Router::set("auth/login");
                             Err(())
                         }
                     }
                 }
-                Err(_) => {
+                Err(err) => {
+                    println!("REFRESH FAIL INNER: {}", err);
                     Router::set("auth/login");
+
                     Err(())
                 }
             }
         }
         None => {
+            println!("REFRESH FAIL INNER");
+
             Router::set("auth/login");
             Err(())
         }
@@ -132,7 +144,6 @@ where
         Ok(res)
     }
 }
-
 
 pub fn public_fetch<Body>(
     method: ClientModes,

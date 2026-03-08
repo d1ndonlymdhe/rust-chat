@@ -308,7 +308,7 @@ impl Router {
         println!("[{:?}] Router::mark_path_changed() LOCK acquiring", std::thread::current().id());
         Self::router().lock().unwrap().path_changed = true;
         println!("[{:?}] Router::mark_path_changed() LOCK released", std::thread::current().id());
-        // UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
 
     pub fn push(new_path: &str) {
@@ -321,6 +321,7 @@ impl Router {
         router.path_changed = true;
         router.push(new_path);
         println!("[{:?}] Router::push({}) done LOCK released changed = {}", std::thread::current().id(), new_path, router.path_changed);
+        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
 
     pub fn set(new_path: &str) {

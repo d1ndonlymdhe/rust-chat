@@ -35,13 +35,54 @@ struct DashboardStateT {
     active_menu: Menu,
 }
 
+
+fn start_polling() {
+    thread::spawn(|| {
+        loop {
+            if DashboardState::is_some() {
+
+                let resp = fetch::<()>(ClientModes::GET, "/chat/conversation/poll", &None);
+                match resp {
+                    Ok(resp) => {
+                        let body = resp.text().expect("ERROR READING POLL RESPONSE BODY");
+                        println!("Poll response body: {}", body.clone());
+                        let as_json = serde_json::from_str::<Response<ChatMessage>>(&body).expect("ERROR PARSING JSON POLL RESPONSE");
+                        if as_json.success {
+                            match as_json.data {
+                                Some(data) => {
+                                    let conversation_id = data.conversation_id;
+                                    ConversationsState::add_message(conversation_id, data.into());
+                                },
+                                None => {
+                                    continue;
+                                },
+                            }
+                        }else{
+                            continue;
+                        }
+
+                    }
+                    Err(e) => {
+                        let x: String = e.into();
+                        eprintln!("Error while polling: {}", x);
+                        continue;
+                    }
+                }
+            }else{
+                break;
+            }
+        }
+    });
+}
+
+
 fn load_self() {
     let self_loaded = Session::self_loaded();
     let self_loading = Session::self_loading();
     if self_loaded || self_loading {
         return;
     }
-    thread::spawn(|| {
+    let handle = thread::spawn(|| {
         Session::set_self_loading(true);
         let resp = fetch::<()>(ClientModes::GET, "/users/me", &None);
         match resp {
@@ -68,6 +109,9 @@ fn load_self() {
             }
         }
     });
+    let _ = handle.join();
+    println!("START POLLING");
+    start_polling();
 }
 
 static DASHBOARD_STATE: OnceLock<RwLock<Option<DashboardStateT>>> = OnceLock::new();

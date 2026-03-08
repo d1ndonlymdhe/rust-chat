@@ -193,48 +193,6 @@ static CONVERSATION_PAGE_STATE: OnceLock<RwLock<Option<ConversationPageState>>> 
 
 pub struct ConversationsState;
 
-
-
-fn start_polling() {
-    thread::spawn(|| {
-        loop {
-            if DashboardState::is_some() {
-
-                let resp = fetch::<()>(ClientModes::GET, "/chat/conversation/poll", &None);
-                match resp {
-                    Ok(resp) => {
-                        let body = resp.text().expect("ERROR READING POLL RESPONSE BODY");
-                        println!("Poll response body: {}", body.clone());
-                        let as_json = serde_json::from_str::<Response<ChatMessage>>(&body).expect("ERROR PARSING JSON POLL RESPONSE");
-                        if as_json.success {
-                            match as_json.data {
-                                Some(data) => {
-                                    let conversation_id = data.conversation_id;
-                                    ConversationsState::add_message(conversation_id, data.into());
-                                },
-                                None => {
-                                    continue;
-                                },
-                            }
-                        }else{
-                            continue;
-                        }
-
-                    }
-                    Err(e) => {
-                        let x: String = e.into();
-                        eprintln!("Error while polling: {}", x);
-                        continue;
-                    }
-                }
-            }else{
-                break;
-            }
-        }
-    });
-}
-
-
 impl ConversationsState {
     pub fn init() {
         match CONVERSATION_PAGE_STATE.get() {
