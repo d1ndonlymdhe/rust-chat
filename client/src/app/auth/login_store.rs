@@ -36,7 +36,6 @@ pub struct LoginState;
 
 impl LoginState {
     pub fn init() {
-        println!("INITIALIZING LOGIN STATE");
         match LOGIN_PAGE_STATE.get() {
             Some(v) => {
                 let has_state = {

@@ -32,7 +32,8 @@ pub fn chat_window(conversation_id: i32) -> Component {
 pub fn messages_section(conversation_id: i32) -> Component {
     let messages = ConversationsState::messages(conversation_id);
     let self_id = Session::get_user_id().expect("User id not set");
-
+    let scroll_to_bottom = ConversationsState::scroll_to_bottom(conversation_id);
+    ConversationsState::set_scroll_to_bottom(conversation_id, false);
     let message_components: Vec<Component> = messages
         .iter()
         .enumerate()
@@ -40,11 +41,12 @@ pub fn messages_section(conversation_id: i32) -> Component {
         .collect();
 
     Layout::get_col_builder()
-        .dbg_name("CHAT_AREA")
         .children(vec![
             Layout::get_col_builder()
+                .dbg_name("CHAT_AREA")
                 .children(message_components)
                 .gap(2)
+                .scroll_offset(if scroll_to_bottom { Some(1.0) } else { None })
                 .build(),
         ])
         .overflow_y(true)
@@ -84,15 +86,13 @@ fn message_component(content: &str, is_self: bool, idx: usize) -> Component {
 
 pub fn send_message_box() -> Component {
     let draft_message = ConversationsState::message_draft();
-    let conversation_id =
-        ConversationsState::selected_conversation_id().expect("No conversation selected");
     let message_input = text_input(
         draft_message.clone(),
         as_state(move |new_message| {
             ConversationsState::set_message_draft(new_message.into());
         }),
         TextInputType::Text,
-        Some(send_message)
+        Some(send_message),
     );
     let input_box = Layout::get_col_builder()
         .flex(8.0)
@@ -129,7 +129,7 @@ fn send_message() {
         let msg = ConversationsState::message_draft();
         ConversationsState::set_message_draft(String::new());
         let conversation_id = ConversationsState::selected_conversation_id();
-        if conversation_id.is_none(){
+        if conversation_id.is_none() {
             return;
         }
         let conversation_id = conversation_id.unwrap();
@@ -141,7 +141,6 @@ fn send_message() {
         match resp {
             Ok(r) => {
                 let as_text = r.text().unwrap_or_default();
-                println!("Send message response text: {}", as_text);
                 let as_json = serde_json::from_str::<Response<Message>>(&as_text);
                 match as_json {
                     Ok(msg) => {

@@ -21,7 +21,7 @@ impl UIRoot {
             .width(dim.0)
             .title(title)
             .build();
-
+        let mut build_count = 0;
         rl.set_target_fps(60);
 
         let mut should_rebuild_ui = true;
@@ -41,11 +41,11 @@ impl UIRoot {
                 || rl.is_key_down(KeyboardKey::KEY_RIGHT_CONTROL);
 
             let window_resized = rl.is_window_resized();
-            
+
             if window_resized {
                 let h = rl.get_screen_height();
                 let w = rl.get_screen_width();
-                dim = (w,h);
+                dim = (w, h);
             }
 
             let extern_signal = rebuild_signal.try_recv();
@@ -95,7 +95,7 @@ impl UIRoot {
             }
             if should_rebuild_ui {
                 main_child = builder();
-                println!("BUILDING");
+                build_count += 1;
                 UIRoot::measure_dimensions(main_child.clone(), dim);
                 UIRoot::measure_positions(main_child.clone());
                 UIRoot::measure_overflows(main_child.clone(), dim, &mut scroll_map);

@@ -31,7 +31,7 @@ pub struct Layout {
     pub on_key: Rc<RefCell<dyn FnMut(KeyEvent) -> bool>>,
     pub children_func: Option<Rc<RefCell<dyn Fn() -> Vec<Component>>>>,
     pub overflow: (bool, bool),
-    pub scroll_offset: i32,
+    pub scroll_offset: Option<f32>,
     pub position: Position,
 }
 
@@ -92,7 +92,7 @@ impl LayoutProps {
                 on_click: Rc::new(RefCell::new(|_mouse_event| true)),
                 on_key: Rc::new(RefCell::new(|_key_event| true)),
                 children_func: None,
-                scroll_offset: 0,
+                scroll_offset: None,
                 overflow: (false, true),
                 position: Position::Auto,
                 border_width: 0,
@@ -130,6 +130,10 @@ impl LayoutProps {
     }
     pub fn gap(mut self, gap: i32) -> Self {
         self.layout.gap = gap;
+        self
+    }
+    pub fn scroll_offset(mut self, offset: Option<f32>) -> Self {
+        self.layout.scroll_offset = offset;
         self
     }
     pub fn dbg_name(mut self, name: &str) -> Self {
@@ -527,14 +531,21 @@ impl Base for Layout {
 
         let start_y = content_y - y_offset;
         let scroll_map_entry = scroll_map.entry(self_id.clone()).or_insert(0);
-        *scroll_map_entry = (*scroll_map_entry).min(max_scroll).max(0);
+        if let Some(scroll_offset) = self.scroll_offset {
+            *scroll_map_entry = (scroll_offset * max_scroll as f32) as i32;
+        } else {
+            *scroll_map_entry = (*scroll_map_entry).min(max_scroll).max(0);
+        }
         let scroll_top = *scroll_map_entry;
+
         let (start_y, visible_height) =
             get_drawable_y_and_h(container_y, container_h, start_y, content_h);
 
         self.draw_dim.1 = visible_height;
         self.pos.1 = start_y;
-
+        if self.get_id() == "CHAT_AREA" {
+            println!("CHAT_AREA scroll_top: {}", y_offset + scroll_top);
+        }
         for child in self.children.iter() {
             let mut child = child.borrow_mut();
             match child.get_position() {
@@ -640,7 +651,7 @@ impl Base for Layout {
         self.position
     }
 
-    fn set_children(&mut self, new_children :Vec<Component>) {
+    fn set_children(&mut self, new_children: Vec<Component>) {
         self.children = new_children
     }
 }

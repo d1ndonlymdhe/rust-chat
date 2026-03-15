@@ -38,14 +38,11 @@ fn main() {
     UIRoot::start(
         Box::new(move || {
             let r = app_route();
-            println!("[{:?}] UI rebuild: about to read path", std::thread::current().id());
             let (path,_,path_changed) = {
                 let current_path = Router::current_path(true);
                 current_path
             };
-            println!("[{:?}] UI rebuild: path={:?} changed={}", std::thread::current().id(), path, path_changed);
             let c = build_route(path, r, path_changed);
-            println!("[{:?}] UI rebuild: build_route done", std::thread::current().id());
             // Router::reset_path_changed();
             c
         }),

@@ -45,7 +45,6 @@ fn start_polling() {
                 match resp {
                     Ok(resp) => {
                         let body = resp.text().expect("ERROR READING POLL RESPONSE BODY");
-                        println!("Poll response body: {}", body.clone());
                         let as_json = serde_json::from_str::<Response<ChatMessage>>(&body).expect("ERROR PARSING JSON POLL RESPONSE");
                         if as_json.success {
                             match as_json.data {
@@ -100,17 +99,14 @@ fn load_self() {
                 }
                 Session::set_self_loading(false);
             }
-            Err(e) => {
+            Err(_) => {
                 Session::set_self_loading(false);
                 Session::set_self_loaded(false);
-                let e_str: String = e.into();
-                println!("Error loading self details: {}", e_str);
                 Router::push("auth/login");
             }
         }
     });
     let _ = handle.join();
-    println!("START POLLING");
     start_polling();
 }
 

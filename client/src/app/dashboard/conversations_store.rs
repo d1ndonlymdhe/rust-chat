@@ -50,6 +50,7 @@ impl From<Message> for ClientMessage {
 #[derive(Clone)]
 pub struct ClientConversation {
     pub conversation: ConversationWithMembers,
+    pub scroll_to_bottom: bool,
     pub messages: Vec<ClientMessage>,
     pub messages_loaded: bool,
     pub messages_loading: bool,
@@ -62,8 +63,32 @@ impl From<ConversationWithMembers> for ClientConversation {
             messages: vec![],
             messages_loaded: false,
             messages_loading: false,
+            scroll_to_bottom: true,
             error: None,
         }
+    }
+}
+
+impl ClientConversation {
+    fn set_scroll_to_bottom<'a>(&'a mut self, scroll_to_bottom: bool) -> &'a mut Self {
+        self.scroll_to_bottom = scroll_to_bottom;
+        return self;
+    }
+    fn set_messages<'a>(&'a mut self, messages: Vec<ClientMessage>) -> &'a mut Self {
+        self.messages = messages;
+        return self;
+    }
+    fn set_messages_loaded<'a>(&'a mut self, loaded: bool) -> &'a mut Self {
+        self.messages_loaded = loaded;
+        return self;
+    }
+    fn set_messages_loading<'a>(&'a mut self, loading: bool) -> &'a mut Self {
+        self.messages_loading = loading;
+        return self;
+    }
+    fn set_messages_error<'a>(&'a mut self, error: Option<String>) -> &'a mut Self {
+        self.error = error;
+        return self;
     }
 }
 
@@ -100,87 +125,88 @@ impl ConversationPageState {
     fn set_error(&mut self, new_error: Option<String>) {
         self.error = new_error;
     }
-    fn set_messages(&mut self, conversation_id: i32, messages: Vec<ClientMessage>) {
-        if let Some(conv) = self
-            .conversations
+    // fn set_messages(&mut self, conversation_id: i32, messages: Vec<ClientMessage>) {
+    //     if let Some(conv) = self
+    //         .conversations
+    //         .iter_mut()
+    //         .find(|c| c.conversation.id == conversation_id)
+    //     {
+    //         conv.messages = messages;
+    //         conv.messages_loaded = true;
+    //         conv.messages_loading = false;
+    //     }
+    //     UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    // }
+    // fn add_message(&mut self, conversation_id: i32, message: ClientMessage) {
+    //     if let Some(conv) = self
+    //         .conversations
+    //         .iter_mut()
+    //         .find(|c| c.conversation.id == conversation_id)
+    //     {
+    //         if conv
+    //             .messages
+    //             .iter()
+    //             .find(|el| el.id == message.id)
+    //             .is_none()
+    //         {
+    //             conv.messages.push(message);
+    //         }
+    //     }
+    //     UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    // }
+    fn find_conversation_mut<'a>(
+        &'a mut self,
+        conversation_id: i32,
+    ) -> Option<&'a mut ClientConversation> {
+        self.conversations
             .iter_mut()
             .find(|c| c.conversation.id == conversation_id)
-        {
-            conv.messages = messages;
-            conv.messages_loaded = true;
-            conv.messages_loading = false;
-        }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
-    fn add_message(&mut self, conversation_id: i32, message: ClientMessage) {
-        if let Some(conv) = self
-            .conversations
-            .iter_mut()
+    fn find_conversation(&self, conversation_id: i32) -> Option<&ClientConversation> {
+        self.conversations
+            .iter()
             .find(|c| c.conversation.id == conversation_id)
-        {
-            if conv
-                .messages
-                .iter()
-                .find(|el| el.id == message.id)
-                .is_none()
-            {
-                conv.messages.push(message);
-            }
-        }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
     }
-    fn set_messages_loading(&mut self, conversation_id: i32, loading: bool) {
-        if let Some(conv) = self
-            .conversations
-            .iter_mut()
-            .find(|c| c.conversation.id == conversation_id)
-        {
-            conv.messages_loading = loading;
-        }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
-    }
-    fn set_messages_loaded(&mut self, conversation_id: i32, loaded: bool) {
-        if let Some(conv) = self
-            .conversations
-            .iter_mut()
-            .find(|c| c.conversation.id == conversation_id)
-        {
-            conv.messages_loaded = loaded;
-        }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
-    }
-    fn clear_messages(&mut self, conversation_id: i32) {
-        if let Some(conv) = self
-            .conversations
-            .iter_mut()
-            .find(|c| c.conversation.id == conversation_id)
-        {
-            conv.messages.clear();
-            conv.messages_loaded = false;
-            conv.messages_loading = false;
-        }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
-    }
-    fn clear_messages_error(&mut self, conversation_id: i32) {
-        if let Some(conv) = self
-            .conversations
-            .iter_mut()
-            .find(|c| c.conversation.id == conversation_id)
-        {
-            conv.error = None;
-        }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
-    }
-    fn set_messages_error(&mut self, conversation_id: i32, error: String) {
-        if let Some(conv) = self
-            .conversations
-            .iter_mut()
-            .find(|c| c.conversation.id == conversation_id)
-        {
-            conv.error = Some(error);
-        }
-        UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
-    }
+    // fn set_messages_loading(&mut self, conversation_id: i32, loading: bool) {
+    //     if let Some(conv) = self.find_conversation(conversation_id) {
+    //         conv.messages_loading = loading;
+    //     }
+    //     UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    // }
+    // fn set_messages_loaded(&mut self, conversation_id: i32, loaded: bool) {
+    //     if let Some(conv) = self.find_conversation(conversation_id) {
+    //         conv.messages_loaded = loaded;
+    //     }
+    //     UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    // }
+    // fn clear_messages(&mut self, conversation_id: i32) {
+    //     if let Some(conv) = self.find_conversation(conversation_id) {
+    //         conv.messages.clear();
+    //         conv.messages_loaded = false;
+    //         conv.messages_loading = false;
+    //     }
+    //     UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    // }
+    // fn clear_messages_error(&mut self, conversation_id: i32) {
+    //     if let Some(conv) = self
+    //         .conversations
+    //         .iter_mut()
+    //         .find(|c| c.conversation.id == conversation_id)
+    //     {
+    //         conv.error = None;
+    //     }
+    //     UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    // }
+    // fn set_messages_error(&mut self, conversation_id: i32, error: String) {
+    //     if let Some(conv) = self
+    //         .conversations
+    //         .iter_mut()
+    //         .find(|c| c.conversation.id == conversation_id)
+    //     {
+    //         conv.error = Some(error);
+    //     }
+    //     UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+    // }
     fn message_draft(&self) -> String {
         self.message_draft.clone()
     }
@@ -298,10 +324,7 @@ impl ConversationsState {
         let state_lock = ConversationsState::state();
         let state = state_lock.read().unwrap();
         let s = state.as_ref().unwrap();
-        if let Some(conv) = s
-            .conversations
-            .iter()
-            .find(|c| c.conversation.id == conversation_id)
+        if let Some(conv) = s.find_conversation(conversation_id)
         {
             return conv.error.clone();
         }
@@ -311,19 +334,36 @@ impl ConversationsState {
         let state_lock = ConversationsState::state();
         let state = state_lock.read().unwrap();
         let s = state.as_ref().unwrap();
-        if let Some(conv) = s
-            .conversations
-            .iter()
-            .find(|c| c.conversation.id == conversation_id)
+        if let Some(conv) = s.find_conversation(conversation_id)
         {
             return conv.messages.clone();
         }
         vec![]
     }
+    pub fn scroll_to_bottom(conversation_id: i32) -> bool {
+        let state_lock = ConversationsState::state();
+        let state = state_lock.read().unwrap();
+        let s = state.as_ref().unwrap();
+        let conv = s.find_conversation(conversation_id);
+        if let Some(conv) = conv {
+            return conv.scroll_to_bottom;
+        }
+        false
+    }
     pub fn add_message(conversation_id: i32, message: ClientMessage) {
         let mut state_lock = ConversationsState::state().write().unwrap();
         let state = state_lock.as_mut().unwrap();
-        state.add_message(conversation_id, message);
+        let conv = state.find_conversation_mut(conversation_id);
+        if conv.is_some() {
+            let conv = conv.unwrap();
+            conv.messages.push(message);
+            conv.set_scroll_to_bottom(true);
+            UI_REBUILD_SIGNAL_SEND.get().unwrap().send(()).unwrap();
+            // let mut messages = conv.messages.clone();
+            // messages.push(message);
+            // conv.set_messages(messages);
+        }
+        // state.add_message(conversation_id, message);
     }
     pub fn set_conversations(new_conversations: Vec<ConversationWithMembers>) {
         let mut state_lock = ConversationsState::state().write().unwrap();
@@ -354,37 +394,58 @@ impl ConversationsState {
     pub fn set_messages(conversation_id: i32, messages: Vec<ClientMessage>) {
         let mut state_lock = ConversationsState::state().write().unwrap();
         let state = state_lock.as_mut().unwrap();
-        state.set_messages(conversation_id, messages);
+        let conv = state.find_conversation_mut(conversation_id);
+        if conv.is_some() {
+            let conv = conv.unwrap();
+            conv.set_messages(messages).set_scroll_to_bottom(true);
+        };
+        // state.set_messages(conversation_id, messages);
     }
 
     pub fn set_messages_loading(conversation_id: i32, loading: bool) {
         let mut state_lock = ConversationsState::state().write().unwrap();
         let state = state_lock.as_mut().unwrap();
-        state.set_messages_loading(conversation_id, loading);
+        let conv = state.find_conversation_mut(conversation_id);
+        if conv.is_some() {
+            let conv = conv.unwrap();
+            conv.set_messages_loading(loading);
+        };
+        // state.set_messages_loading(conversation_id, loading);
     }
 
     pub fn set_messages_loaded(conversation_id: i32, loaded: bool) {
         let mut state_lock = ConversationsState::state().write().unwrap();
         let state = state_lock.as_mut().unwrap();
-        state.set_messages_loaded(conversation_id, loaded);
+        let conv = state.find_conversation_mut(conversation_id);
+        if conv.is_some() {
+            let conv = conv.unwrap();
+            conv.set_messages_loaded(loaded);
+        }
+        // state.set_messages_loaded(conversation_id, loaded);
     }
 
-    pub fn clear_messages(conversation_id: i32) {
-        let mut state_lock = ConversationsState::state().write().unwrap();
-        let state = state_lock.as_mut().unwrap();
-        state.clear_messages(conversation_id);
-    }
+    // pub fn clear_messages(conversation_id: i32) {
+    //     let mut state_lock = ConversationsState::state().write().unwrap();
+    //     let state = state_lock.as_mut().unwrap();
 
-    pub fn clear_messages_error(conversation_id: i32) {
-        let mut state_lock = ConversationsState::state().write().unwrap();
-        let state = state_lock.as_mut().unwrap();
-        state.clear_messages_error(conversation_id);
-    }
+    //     state.clear_messages(conversation_id);
+    // }
+
+    // pub fn clear_messages_error(conversation_id: i32) {
+    //     let mut state_lock = ConversationsState::state().write().unwrap();
+    //     let state = state_lock.as_mut().unwrap();
+    //     state.clear_messages_error(conversation_id);
+    // }
 
     pub fn set_messages_error(conversation_id: i32, error: String) {
         let mut state_lock = ConversationsState::state().write().unwrap();
         let state = state_lock.as_mut().unwrap();
-        state.set_messages_error(conversation_id, error);
+        let conv = state.find_conversation_mut(conversation_id);
+        if conv.is_some() {
+            let conv = conv.unwrap();
+            conv.set_messages_error(Some(error));
+        }
+        // state.set_messages_error(conversation_id, error);
     }
 
     pub fn message_draft() -> String {
@@ -398,6 +459,16 @@ impl ConversationsState {
         let mut state_lock = ConversationsState::state().write().unwrap();
         let state = state_lock.as_mut().unwrap();
         state.set_message_draft(draft);
+    }
+
+    pub fn set_scroll_to_bottom(conversation_id: i32, scroll: bool) {
+        let mut state_lock = ConversationsState::state().write().unwrap();
+        let state = state_lock.as_mut().unwrap();
+        let conv = state.find_conversation_mut(conversation_id);
+        if conv.is_some() {
+            let conv = conv.unwrap();
+            conv.set_scroll_to_bottom(scroll);
+        }
     }
 }
 
@@ -463,11 +534,6 @@ fn load_messages(conversation_id: i32) {
                     Ok(data) => {
                         if data.success {
                             let messages = data.data.unwrap();
-                            println!(
-                                "Loaded {} messages for conversation {}",
-                                messages.len(),
-                                conversation_id
-                            );
                             let client_messages = messages.into_iter().map(|m| m.into()).collect();
                             ConversationsState::set_messages(conversation_id, client_messages);
                             ConversationsState::set_messages_loaded(conversation_id, true);

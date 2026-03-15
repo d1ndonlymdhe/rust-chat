@@ -5,7 +5,6 @@ const APP_NAME: &str = "rust-chat";
 
 impl LocalStorage {
     pub fn set_value(key:&str,value:&str){
-        println!("SETTING {} = {}", key, value);
         let e = Entry::new(APP_NAME, key).expect("ERROR SETTING KEYRING VALUE");
         e.set_password(value).expect("ERROR SETTING KEYRING VALUE");
 

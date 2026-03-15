@@ -80,37 +80,29 @@ pub fn refresh_the_token(refresh_token: Option<String>) -> Result<(), ()> {
                         Ok(body) => match serde_json::from_str::<Response<RefreshResponse>>(&body) {
                             Ok(body) => {
                                 if body.success{
-                                    println!("REFRESH SUCCESS INNER");
                                     Session::set_token(body.data.unwrap());
                                     Ok(())
                                 }else{
-                                    println!("REFRESH FAIL INNER {}",body.message);
                                     Err(())
                                 }
                             }
-                            Err(err) => {
-                                println!("REFRESH FAIL INNER: {}", err);
+                            Err(_) => {
                                 Err(())
                             }
                         },
-                        Err(err) => {
-                            println!("REFRESH FAIL INNER: {}", err);
+                        Err(_) => {
                             Router::set("auth/login");
                             Err(())
                         }
                     }
                 }
-                Err(err) => {
-                    println!("REFRESH FAIL INNER: {}", err);
+                Err(_) => {
                     Router::set("auth/login");
-
                     Err(())
                 }
             }
         }
         None => {
-            println!("REFRESH FAIL INNER");
-
             Router::set("auth/login");
             Err(())
         }

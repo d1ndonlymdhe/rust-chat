@@ -32,19 +32,14 @@ fn load_session() {
 fn init() {
     let token = LocalStorage::get_value("token");
     if let Some(token) = token {
-        println!("TOKEN = {}",token);
         thread::spawn(move || {
-            println!("REFRESHING TOKEN");
             if let Ok(_) = refresh_the_token(Some(token)) {
-                println!("REFRESH SUCCESS");
                 Router::push("dashboard/conversations");
             } else {
-                println!("REFRESH FAIL");
                 Router::push("auth/login");
             };
         });
     } else {
-        println!("NO TOKEN FOUND");
         Router::push("auth/login");
     }
 }

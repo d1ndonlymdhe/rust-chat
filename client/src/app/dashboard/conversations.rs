@@ -98,7 +98,6 @@ fn conversation_list_item(
     let conversation = &conversation.conversation;
     let passed_conversation_id = conversation.id;
     let is_selected = selected_id == Some(conversation.id);
-
     let conversation_name = if conversation.title.is_none() {
         let conversation_members = conversation
             .members
